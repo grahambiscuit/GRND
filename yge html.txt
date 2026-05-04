@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YGE Vault — Coffee Inventory System</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ═══ AUTH ═══════════════════════════════════════════════ -->
+<div id="auth-wrapper">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <span class="auth-bean">☕</span>
+      <span class="brand-name">YGE Vault</span>
+      <span class="brand-tag">Coffee Inventory System</span>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="login-panel">
+      <h2 class="auth-heading">Welcome back</h2>
+      <p class="auth-sub">Sign in to manage your inventory</p>
+      <div class="err-box" id="login-err"></div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="li-email" placeholder="you@coffeeshop.com" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="li-pass" placeholder="••••••••" />
+      </div>
+      <button class="btn-primary" onclick="doLogin()">Sign In</button>
+      <p class="auth-toggle">No account? <a onclick="showPanel('signup')">Create one →</a></p>
+    </div>
+
+    <!-- SIGNUP -->
+    <div id="signup-panel" style="display:none;">
+      <h2 class="auth-heading">Create account</h2>
+      <p class="auth-sub">Set up your YGE Vault workspace</p>
+      <div class="err-box" id="su-err"></div>
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="su-name" placeholder="Juan dela Cruz" />
+      </div>
+      <div class="form-group">
+        <label>Shop Name</label>
+        <input type="text" id="su-shop" placeholder="YGE Coffee Roasters" />
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="su-email" placeholder="you@coffeeshop.com" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="su-pass" placeholder="Min. 6 characters" />
+      </div>
+      <div class="form-group">
+        <label>Confirm Password</label>
+        <input type="password" id="su-confirm" placeholder="Repeat password" />
+      </div>
+      <button class="btn-primary" onclick="doSignup()">Create Account</button>
+      <p class="auth-toggle">Already have an account? <a onclick="showPanel('login')">Sign in →</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ APP ════════════════════════════════════════════════ -->
+<div id="app-wrapper">
+
+  <header class="app-header">
+    <div class="header-brand">
+      YGE Vault
+      <small>Coffee Inventory System</small>
+    </div>
+    <div class="header-right">
+      <div class="user-pill">
+        <div class="avatar" id="hdr-avatar">J</div>
+        <div class="user-info">
+          <div class="uname" id="hdr-name">—</div>
+          <div class="ushop" id="hdr-shop">—</div>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">Logout</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Items</div>
+        <div class="stat-value" id="st-total">0</div>
+        <div class="stat-sub">in inventory</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Low Stock</div>
+        <div class="stat-value" id="st-low" style="color:#f0b27a;">0</div>
+        <div class="stat-sub">need reordering</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Out of Stock</div>
+        <div class="stat-value" id="st-out" style="color:#e57373;">0</div>
+        <div class="stat-sub">need restocking</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Value</div>
+        <div class="stat-value" id="st-val" style="font-size:1.35rem;">₱0</div>
+        <div class="stat-sub">estimated stock value</div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="srch" placeholder="Search items…" oninput="render()" />
+        </div>
+        <select class="filter-select" id="cat-f" onchange="render()">
+          <option value="">All Categories</option>
+          <option value="beans">Beans</option>
+          <option value="dairy">Dairy</option>
+          <option value="syrups">Syrups</option>
+          <option value="equipment">Equipment</option>
+          <option value="supplies">Supplies</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <button class="btn-add" onclick="openAdd()">＋ Add Item</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sort('name')">Item ↕</th>
+            <th onclick="sort('category')">Category ↕</th>
+            <th onclick="sort('quantity')">Qty ↕</th>
+            <th>Unit</th>
+            <th onclick="sort('price')">Unit Price ↕</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="inv-tbody"></tbody>
+      </table>
+      <div class="empty-state" id="empty-st" style="display:none;">
+        <div class="ei">📦</div>
+        <p>No items found. Add your first inventory item!</p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ITEM MODAL -->
+<div class="modal-backdrop" id="item-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="m-title">Add Item</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Item Name *</label>
+        <input type="text" id="f-name" placeholder="e.g. Arabica Beans" />
+      </div>
+      <div class="form-group">
+        <label>SKU / Code</label>
+        <input type="text" id="f-sku" placeholder="e.g. BN-001" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Category *</label>
+        <select id="f-cat">
+          <option value="">Select…</option>
+          <option value="beans">Beans</option>
+          <option value="dairy">Dairy</option>
+          <option value="syrups">Syrups</option>
+          <option value="equipment">Equipment</option>
+          <option value="supplies">Supplies</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Unit</label>
+        <select id="f-unit">
+          <option value="kg">kg</option>
+          <option value="g">g</option>
+          <option value="L">L</option>
+          <option value="mL">mL</option>
+          <option value="pcs">pcs</option>
+          <option value="bag">bag</option>
+          <option value="box">box</option>
+          <option value="bottle">bottle</option>
+          <option value="pack">pack</option>
+          <option value="can">can</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Quantity *</label>
+        <input type="number" id="f-qty" placeholder="0" min="0" />
+      </div>
+      <div class="form-group">
+        <label>Low-Stock Alert At</label>
+        <input type="number" id="f-thresh" placeholder="5" min="0" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Unit Price (₱)</label>
+        <input type="number" id="f-price" placeholder="0.00" min="0" step="0.01" />
+      </div>
+      <div class="form-group">
+        <label>Supplier</label>
+        <input type="text" id="f-supplier" placeholder="Supplier name" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="f-notes" placeholder="Additional notes…"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveItem()">Save Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM -->
+<div class="modal-backdrop" id="del-modal">
+  <div class="confirm-box">
+    <h3>Remove Item?</h3>
+    <p id="del-msg">This item will be permanently removed.</p>
+    <div class="confirm-actions">
+      <button class="btn-ghost" onclick="closeDelModal()">Cancel</button>
+      <button class="btn-confirm-del" onclick="confirmDel()">Yes, Remove</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
