@@ -1,3 +1,12 @@
+// ── AUTO-CLEAR OLD SEED DATA ──────────────────────────────
+(function() {
+  const VERSION = 'yge_v2';
+  if (!localStorage.getItem(VERSION)) {
+    localStorage.clear();
+    localStorage.setItem(VERSION, '1');
+  }
+})();
+
 // ── STORAGE ──────────────────────────────────────────────
 const K = {
   USERS: 'yge_users',
