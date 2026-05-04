@@ -67,7 +67,6 @@ function doSignup() {
   };
   users.push(u);
   db.setUsers(users);
-  seedData(email);
   db.setSess(u);
   launch(u);
 }
