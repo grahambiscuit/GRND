@@ -5,627 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>YGE Vault — Coffee Inventory System</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --espresso: #1a0f07;
-    --roast: #2d1a0e;
-    --bark: #3d2510;
-    --caramel: #c17f3a;
-    --gold: #e8a84c;
-    --cream: #f5e6ca;
-    --muted: #9a7d5a;
-    --radius: 10px;
-    --transition: 0.2s ease;
-  }
-
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--espresso);
-    color: var(--cream);
-    min-height: 100vh;
-    background-image:
-      radial-gradient(ellipse at 20% 0%, #3d1c08 0%, transparent 55%),
-      radial-gradient(ellipse at 80% 100%, #2a1305 0%, transparent 55%);
-  }
-
-  /* AUTH */
-  #auth-wrapper {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem;
-  }
-
-  .auth-card {
-    background: var(--roast);
-    border: 1px solid var(--bark);
-    border-radius: 18px;
-    padding: 3rem 2.5rem;
-    width: 100%;
-    max-width: 430px;
-    box-shadow: 0 32px 80px rgba(0,0,0,0.55);
-  }
-
-  .auth-logo {
-    text-align: center;
-    margin-bottom: 2.2rem;
-  }
-
-  .auth-bean { font-size: 2.8rem; display: block; margin-bottom: 0.6rem; }
-
-  .brand-name {
-    font-family: 'Playfair Display', serif;
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--gold);
-    letter-spacing: 0.06em;
-    display: block;
-  }
-
-  .brand-tag {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.6rem;
-    color: var(--muted);
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    margin-top: 5px;
-    display: block;
-  }
-
-  .auth-heading {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.45rem;
-    color: var(--cream);
-    margin-bottom: 0.3rem;
-  }
-
-  .auth-sub {
-    font-size: 0.84rem;
-    color: var(--muted);
-    margin-bottom: 1.8rem;
-  }
-
-  .form-group { margin-bottom: 1.15rem; }
-
-  .form-group label {
-    display: block;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.67rem;
-    letter-spacing: 0.17em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 0.48rem;
-  }
-
-  .form-group input,
-  .form-group select,
-  .form-group textarea {
-    width: 100%;
-    background: var(--espresso);
-    border: 1px solid var(--bark);
-    border-radius: var(--radius);
-    padding: 0.72rem 1rem;
-    color: var(--cream);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.93rem;
-    outline: none;
-    transition: border-color var(--transition);
-  }
-
-  .form-group input:focus,
-  .form-group select:focus,
-  .form-group textarea:focus { border-color: var(--caramel); }
-
-  .form-group input::placeholder { color: var(--muted); opacity: 0.55; }
-  .form-group select option { background: var(--roast); }
-  .form-group textarea { resize: vertical; min-height: 78px; }
-
-  .btn-primary {
-    width: 100%;
-    background: var(--caramel);
-    color: var(--espresso);
-    border: none;
-    border-radius: var(--radius);
-    padding: 0.78rem 1.5rem;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.93rem;
-    font-weight: 600;
-    cursor: pointer;
-    letter-spacing: 0.03em;
-    transition: all var(--transition);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-  }
-
-  .btn-primary:hover { background: var(--gold); transform: translateY(-1px); }
-  .btn-primary:active { transform: translateY(0); }
-
-  .btn-ghost {
-    background: transparent;
-    color: var(--muted);
-    border: 1px solid var(--bark);
-    border-radius: var(--radius);
-    padding: 0.65rem 1.2rem;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.88rem;
-    cursor: pointer;
-    transition: all var(--transition);
-  }
-
-  .btn-ghost:hover { border-color: var(--caramel); color: var(--cream); }
-
-  .auth-toggle {
-    text-align: center;
-    margin-top: 1.4rem;
-    font-size: 0.84rem;
-    color: var(--muted);
-  }
-
-  .auth-toggle a {
-    color: var(--caramel);
-    cursor: pointer;
-    font-weight: 500;
-    text-decoration: none;
-  }
-
-  .auth-toggle a:hover { color: var(--gold); }
-
-  .err-box {
-    background: rgba(192,57,43,0.15);
-    border: 1px solid rgba(192,57,43,0.38);
-    color: #f1948a;
-    border-radius: var(--radius);
-    padding: 0.62rem 1rem;
-    font-size: 0.82rem;
-    margin-bottom: 1rem;
-    display: none;
-  }
-
-  .err-box.show { display: block; }
-
-  /* APP */
-  #app-wrapper { display: none; min-height: 100vh; }
-
-  .app-header {
-    background: var(--roast);
-    border-bottom: 1px solid var(--bark);
-    padding: 0 2rem;
-    height: 62px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-
-  .header-brand {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.35rem;
-    font-weight: 700;
-    color: var(--gold);
-    letter-spacing: 0.05em;
-    line-height: 1;
-  }
-
-  .header-brand small {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.58rem;
-    color: var(--muted);
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    display: block;
-    font-weight: 300;
-    margin-top: 3px;
-  }
-
-  .header-right { display: flex; align-items: center; gap: 1rem; }
-
-  .user-pill {
-    display: flex;
-    align-items: center;
-    gap: 0.55rem;
-  }
-
-  .avatar {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: var(--caramel);
-    color: var(--espresso);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 0.85rem;
-    flex-shrink: 0;
-  }
-
-  .user-info { line-height: 1.2; }
-  .user-info .uname { font-size: 0.82rem; font-weight: 500; color: var(--cream); }
-  .user-info .ushop { font-size: 0.72rem; color: var(--muted); }
-
-  .btn-logout {
-    background: transparent;
-    border: 1px solid var(--bark);
-    color: var(--muted);
-    border-radius: var(--radius);
-    padding: 0.38rem 0.85rem;
-    font-size: 0.78rem;
-    cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-    transition: all var(--transition);
-  }
-
-  .btn-logout:hover { border-color: var(--caramel); color: var(--cream); }
-
-  .app-main { padding: 2rem; max-width: 1200px; margin: 0 auto; }
-
-  /* STATS */
-  .stats-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
-    gap: 1rem;
-    margin-bottom: 2rem;
-  }
-
-  .stat-card {
-    background: var(--roast);
-    border: 1px solid var(--bark);
-    border-radius: var(--radius);
-    padding: 1.15rem 1.3rem;
-  }
-
-  .stat-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.62rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 0.48rem;
-  }
-
-  .stat-value {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.85rem;
-    font-weight: 700;
-    color: var(--gold);
-    line-height: 1;
-  }
-
-  .stat-sub { font-size: 0.73rem; color: var(--muted); margin-top: 0.28rem; }
-
-  /* TOOLBAR */
-  .toolbar {
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-    margin-bottom: 1.35rem;
-    flex-wrap: wrap;
-  }
-
-  .toolbar-left { display: flex; align-items: center; gap: 0.7rem; flex: 1; min-width: 180px; }
-
-  .search-wrap { position: relative; flex: 1; max-width: 300px; }
-
-  .search-wrap input {
-    width: 100%;
-    background: var(--roast);
-    border: 1px solid var(--bark);
-    border-radius: var(--radius);
-    padding: 0.6rem 1rem 0.6rem 2.3rem;
-    color: var(--cream);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.87rem;
-    outline: none;
-    transition: border-color var(--transition);
-  }
-
-  .search-wrap input:focus { border-color: var(--caramel); }
-  .search-wrap input::placeholder { color: var(--muted); }
-
-  .search-icon {
-    position: absolute;
-    left: 0.72rem;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 0.85rem;
-    pointer-events: none;
-  }
-
-  .filter-select {
-    background: var(--roast);
-    border: 1px solid var(--bark);
-    border-radius: var(--radius);
-    padding: 0.6rem 1rem;
-    color: var(--cream);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.87rem;
-    outline: none;
-    cursor: pointer;
-    transition: border-color var(--transition);
-  }
-
-  .filter-select:focus { border-color: var(--caramel); }
-  .filter-select option { background: var(--roast); }
-
-  .btn-add {
-    background: var(--caramel);
-    color: var(--espresso);
-    border: none;
-    border-radius: var(--radius);
-    padding: 0.62rem 1.25rem;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 600;
-    font-size: 0.87rem;
-    cursor: pointer;
-    transition: all var(--transition);
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-  }
-
-  .btn-add:hover { background: var(--gold); transform: translateY(-1px); }
-
-  /* TABLE */
-  .table-wrap {
-    background: var(--roast);
-    border: 1px solid var(--bark);
-    border-radius: var(--radius);
-    overflow: hidden;
-  }
-
-  table { width: 100%; border-collapse: collapse; }
-
-  thead th {
-    background: var(--bark);
-    padding: 0.82rem 1.05rem;
-    text-align: left;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.62rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--muted);
-    font-weight: 400;
-    cursor: pointer;
-    user-select: none;
-    white-space: nowrap;
-  }
-
-  thead th:hover { color: var(--cream); }
-
-  tbody tr {
-    border-bottom: 1px solid rgba(61,37,16,0.5);
-    transition: background var(--transition);
-  }
-
-  tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: rgba(61,37,16,0.4); }
-
-  tbody td {
-    padding: 0.88rem 1.05rem;
-    font-size: 0.87rem;
-    color: var(--cream);
-    vertical-align: middle;
-  }
-
-  .item-name { font-weight: 500; }
-
-  .item-sku {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.73rem;
-    color: var(--muted);
-    margin-top: 2px;
-  }
-
-  .badge {
-    display: inline-block;
-    padding: 0.22rem 0.62rem;
-    border-radius: 20px;
-    font-size: 0.7rem;
-    font-weight: 500;
-    letter-spacing: 0.03em;
-  }
-
-  .badge-beans     { background: rgba(193,127,58,0.2);  color: #e8a84c; border: 1px solid rgba(193,127,58,0.35); }
-  .badge-dairy     { background: rgba(245,230,202,0.1); color: #c8b99a; border: 1px solid rgba(245,230,202,0.2); }
-  .badge-syrups    { background: rgba(155,89,182,0.15); color: #c39bd3; border: 1px solid rgba(155,89,182,0.3); }
-  .badge-equipment { background: rgba(26,95,142,0.15);  color: #7fb3d3; border: 1px solid rgba(26,95,142,0.3); }
-  .badge-supplies  { background: rgba(30,126,75,0.15);  color: #7dcea0; border: 1px solid rgba(30,126,75,0.3); }
-  .badge-other     { background: rgba(154,125,90,0.15); color: #9a7d5a; border: 1px solid rgba(154,125,90,0.3); }
-
-  .stock-ok  { color: #7dcea0; font-size: 0.8rem; }
-  .stock-low { color: #f0b27a; font-size: 0.8rem; }
-  .stock-out { color: #e57373; font-size: 0.8rem; }
-
-  .actions { display: flex; gap: 0.45rem; }
-
-  .btn-edit {
-    background: rgba(193,127,58,0.15);
-    color: var(--gold);
-    border: 1px solid rgba(193,127,58,0.3);
-    border-radius: 7px;
-    padding: 0.38rem 0.82rem;
-    font-size: 0.78rem;
-    cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-    transition: all var(--transition);
-  }
-
-  .btn-edit:hover { background: rgba(193,127,58,0.3); }
-
-  .btn-del {
-    background: rgba(192,57,43,0.15);
-    color: #e57373;
-    border: 1px solid rgba(192,57,43,0.3);
-    border-radius: 7px;
-    padding: 0.38rem 0.82rem;
-    font-size: 0.78rem;
-    cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-    transition: all var(--transition);
-  }
-
-  .btn-del:hover { background: rgba(192,57,43,0.3); }
-
-  .empty-state {
-    text-align: center;
-    padding: 4rem 2rem;
-    color: var(--muted);
-  }
-
-  .empty-state .ei { font-size: 2.5rem; margin-bottom: 1rem; }
-  .empty-state p { font-size: 0.88rem; }
-
-  /* MODAL */
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(10,5,2,0.85);
-    z-index: 200;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 1.5rem;
-  }
-
-  .modal-backdrop.show { display: flex; }
-
-  .modal {
-    background: var(--roast);
-    border: 1px solid var(--bark);
-    border-radius: 16px;
-    width: 100%;
-    max-width: 520px;
-    max-height: 90vh;
-    overflow-y: auto;
-    padding: 2rem;
-    box-shadow: 0 32px 80px rgba(0,0,0,0.65);
-  }
-
-  .modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 1.65rem;
-  }
-
-  .modal-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.28rem;
-    color: var(--cream);
-  }
-
-  .modal-close {
-    background: transparent;
-    border: none;
-    color: var(--muted);
-    font-size: 1.25rem;
-    cursor: pointer;
-    line-height: 1;
-    transition: color var(--transition);
-  }
-
-  .modal-close:hover { color: var(--cream); }
-
-  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-
-  .modal-actions {
-    display: flex;
-    gap: 0.7rem;
-    margin-top: 1.65rem;
-    justify-content: flex-end;
-  }
-
-  .modal-actions .btn-primary {
-    width: auto;
-    padding: 0.68rem 1.7rem;
-  }
-
-  /* CONFIRM */
-  .confirm-box {
-    background: var(--roast);
-    border: 1px solid rgba(192,57,43,0.42);
-    border-radius: 14px;
-    padding: 1.8rem;
-    max-width: 370px;
-    width: 100%;
-    text-align: center;
-  }
-
-  .confirm-box h3 {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.18rem;
-    margin-bottom: 0.55rem;
-  }
-
-  .confirm-box p { font-size: 0.83rem; color: var(--muted); margin-bottom: 1.4rem; }
-
-  .confirm-actions { display: flex; gap: 0.7rem; justify-content: center; }
-
-  .btn-confirm-del {
-    background: rgba(192,57,43,0.85);
-    color: #fff;
-    border: none;
-    border-radius: var(--radius);
-    padding: 0.62rem 1.35rem;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 500;
-    font-size: 0.87rem;
-    cursor: pointer;
-    transition: background var(--transition);
-  }
-
-  .btn-confirm-del:hover { background: #c0392b; }
-
-  /* TOAST */
-  .toast-wrap {
-    position: fixed;
-    bottom: 1.4rem;
-    right: 1.4rem;
-    z-index: 300;
-    display: flex;
-    flex-direction: column;
-    gap: 0.45rem;
-  }
-
-  .toast {
-    background: var(--bark);
-    border: 1px solid rgba(193,127,58,0.3);
-    color: var(--cream);
-    border-radius: var(--radius);
-    padding: 0.7rem 1.15rem;
-    font-size: 0.83rem;
-    display: flex;
-    align-items: center;
-    gap: 0.55rem;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    animation: tIn 0.28s ease;
-  }
-
-  .toast.t-success { border-color: rgba(30,126,75,0.5); }
-  .toast.t-danger  { border-color: rgba(192,57,43,0.5); }
-
-  @keyframes tIn {
-    from { opacity: 0; transform: translateX(18px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-
-  @media (max-width: 640px) {
-    .form-row { grid-template-columns: 1fr; }
-    .app-main { padding: 1rem; }
-    .auth-card { padding: 2rem 1.5rem; }
-    .stats-row { grid-template-columns: 1fr 1fr; }
-    thead th:nth-child(4), tbody td:nth-child(4) { display: none; }
-    thead th:nth-child(5), tbody td:nth-child(5) { display: none; }
-  }
-</style>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
@@ -673,12 +53,33 @@
         <input type="email" id="su-email" placeholder="you@coffeeshop.com" />
       </div>
       <div class="form-group">
+        <label>Phone Number</label>
+        <input type="tel" id="su-phone" placeholder="+63 9XX XXX XXXX" />
+      </div>
+      <div class="form-group">
+        <label>Role / Position</label>
+        <select id="su-role">
+          <option value="">Select role…</option>
+          <option value="Owner">Owner</option>
+          <option value="Manager">Manager</option>
+          <option value="Barista">Barista</option>
+          <option value="Staff">Staff</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label>Password</label>
         <input type="password" id="su-pass" placeholder="Min. 6 characters" />
       </div>
       <div class="form-group">
         <label>Confirm Password</label>
         <input type="password" id="su-confirm" placeholder="Repeat password" />
+      </div>
+      <div class="form-group tos-check">
+        <label class="checkbox-label">
+          <input type="checkbox" id="su-tos" />
+          <span class="checkmark"></span>
+          <span>I agree to the <a class="tos-link" onclick="openTOS()">Terms &amp; Conditions</a></span>
+        </label>
       </div>
       <button class="btn-primary" onclick="doSignup()">Create Account</button>
       <p class="auth-toggle">Already have an account? <a onclick="showPanel('login')">Sign in →</a></p>
@@ -695,7 +96,27 @@
       <small>Coffee Inventory System</small>
     </div>
     <div class="header-right">
-      <div class="user-pill">
+      <!-- Nav Tabs -->
+      <nav class="header-nav">
+        <button class="nav-tab active" onclick="switchTab('inventory')" id="tab-inventory">Inventory</button>
+        <button class="nav-tab" onclick="switchTab('reports')" id="tab-reports">Reports</button>
+      </nav>
+      <!-- Notification Bell -->
+      <div class="notif-wrap" id="notif-wrap">
+        <button class="notif-btn" onclick="toggleNotifPanel()" id="notif-btn">
+          🔔
+          <span class="notif-badge" id="notif-badge" style="display:none;">0</span>
+        </button>
+        <div class="notif-panel" id="notif-panel" style="display:none;">
+          <div class="notif-header">
+            <span class="notif-title">Stock Alerts</span>
+            <button class="notif-close" onclick="toggleNotifPanel()">✕</button>
+          </div>
+          <div class="notif-list" id="notif-list"></div>
+        </div>
+      </div>
+      <!-- User Pill (clickable) -->
+      <div class="user-pill" onclick="openProfile()" title="View Profile">
         <div class="avatar" id="hdr-avatar">J</div>
         <div class="user-info">
           <div class="uname" id="hdr-name">—</div>
@@ -708,73 +129,141 @@
 
   <main class="app-main">
 
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-label">Total Items</div>
-        <div class="stat-value" id="st-total">0</div>
-        <div class="stat-sub">in inventory</div>
+    <!-- ── INVENTORY TAB ── -->
+    <div id="view-inventory">
+      <!-- Stock Alert Banner -->
+      <div class="alert-banner" id="alert-banner" style="display:none;">
+        <span class="alert-icon">⚠️</span>
+        <span id="alert-text"></span>
+        <button class="alert-dismiss" onclick="dismissBanner()">✕</button>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Low Stock</div>
-        <div class="stat-value" id="st-low" style="color:#f0b27a;">0</div>
-        <div class="stat-sub">need reordering</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Out of Stock</div>
-        <div class="stat-value" id="st-out" style="color:#e57373;">0</div>
-        <div class="stat-sub">need restocking</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Total Value</div>
-        <div class="stat-value" id="st-val" style="font-size:1.35rem;">₱0</div>
-        <div class="stat-sub">estimated stock value</div>
-      </div>
-    </div>
 
-    <div class="toolbar">
-      <div class="toolbar-left">
-        <div class="search-wrap">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="srch" placeholder="Search items…" oninput="render()" />
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Total Items</div>
+          <div class="stat-value" id="st-total">0</div>
+          <div class="stat-sub">in inventory</div>
         </div>
-        <select class="filter-select" id="cat-f" onchange="render()">
-          <option value="">All Categories</option>
-          <option value="beans">Beans</option>
-          <option value="dairy">Dairy</option>
-          <option value="syrups">Syrups</option>
-          <option value="equipment">Equipment</option>
-          <option value="supplies">Supplies</option>
-          <option value="other">Other</option>
-        </select>
+        <div class="stat-card">
+          <div class="stat-label">Low Stock</div>
+          <div class="stat-value" id="st-low" style="color:#f0b27a;">0</div>
+          <div class="stat-sub">need reordering</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Out of Stock</div>
+          <div class="stat-value" id="st-out" style="color:#e57373;">0</div>
+          <div class="stat-sub">need restocking</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Value</div>
+          <div class="stat-value" id="st-val" style="font-size:1.35rem;">₱0</div>
+          <div class="stat-sub">estimated stock value</div>
+        </div>
       </div>
-      <button class="btn-add" onclick="openAdd()">＋ Add Item</button>
+
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="srch" placeholder="Search items…" oninput="render()" />
+          </div>
+          <select class="filter-select" id="cat-f" onchange="render()">
+            <option value="">All Categories</option>
+            <option value="beans">Beans</option>
+            <option value="dairy">Dairy</option>
+            <option value="syrups">Syrups</option>
+            <option value="equipment">Equipment</option>
+            <option value="supplies">Supplies</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <button class="btn-add" onclick="openAdd()">＋ Add Item</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sort('name')">Item ↕</th>
+              <th onclick="sort('category')">Category ↕</th>
+              <th onclick="sort('quantity')">Qty ↕</th>
+              <th>Unit</th>
+              <th onclick="sort('price')">Unit Price ↕</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="inv-tbody"></tbody>
+        </table>
+        <div class="empty-state" id="empty-st" style="display:none;">
+          <div class="ei">📦</div>
+          <p>No items found. Add your first inventory item!</p>
+        </div>
+      </div>
     </div>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th onclick="sort('name')">Item ↕</th>
-            <th onclick="sort('category')">Category ↕</th>
-            <th onclick="sort('quantity')">Qty ↕</th>
-            <th>Unit</th>
-            <th onclick="sort('price')">Unit Price ↕</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="inv-tbody"></tbody>
-      </table>
-      <div class="empty-state" id="empty-st" style="display:none;">
-        <div class="ei">📦</div>
-        <p>No items found. Add your first inventory item!</p>
+    <!-- ── REPORTS TAB ── -->
+    <div id="view-reports" style="display:none;">
+      <div class="reports-header">
+        <h2 class="reports-title">Inventory Reports</h2>
+        <p class="reports-sub">Overview of your current stock health</p>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="report-summary-row">
+        <div class="report-card rc-green">
+          <div class="rc-icon">✅</div>
+          <div class="rc-body">
+            <div class="rc-label">In Stock</div>
+            <div class="rc-val" id="rpt-ok">0</div>
+          </div>
+        </div>
+        <div class="report-card rc-orange">
+          <div class="rc-icon">⚠️</div>
+          <div class="rc-body">
+            <div class="rc-label">Low Stock</div>
+            <div class="rc-val" id="rpt-low">0</div>
+          </div>
+        </div>
+        <div class="report-card rc-red">
+          <div class="rc-icon">🚫</div>
+          <div class="rc-body">
+            <div class="rc-label">Out of Stock</div>
+            <div class="rc-val" id="rpt-out">0</div>
+          </div>
+        </div>
+        <div class="report-card rc-gold">
+          <div class="rc-icon">💰</div>
+          <div class="rc-body">
+            <div class="rc-label">Total Value</div>
+            <div class="rc-val" id="rpt-val">₱0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category Breakdown -->
+      <div class="report-section">
+        <h3 class="section-heading">Stock by Category</h3>
+        <div class="cat-bars" id="cat-bars"></div>
+      </div>
+
+      <!-- Critical Items -->
+      <div class="report-section">
+        <h3 class="section-heading">⚠️ Items Needing Attention</h3>
+        <div class="attention-list" id="attention-list"></div>
+      </div>
+
+      <!-- Top Value Items -->
+      <div class="report-section">
+        <h3 class="section-heading">💎 Top Value Items</h3>
+        <div class="top-value-list" id="top-value-list"></div>
       </div>
     </div>
 
   </main>
 </div>
 
-<!-- ITEM MODAL -->
+<!-- ═══ ITEM MODAL ═══════════════════════════════════ -->
 <div class="modal-backdrop" id="item-modal">
   <div class="modal">
     <div class="modal-header">
@@ -851,7 +340,7 @@
   </div>
 </div>
 
-<!-- DELETE CONFIRM -->
+<!-- ═══ DELETE CONFIRM ════════════════════════════════ -->
 <div class="modal-backdrop" id="del-modal">
   <div class="confirm-box">
     <h3>Remove Item?</h3>
@@ -863,307 +352,128 @@
   </div>
 </div>
 
+<!-- ═══ PROFILE MODAL ════════════════════════════════ -->
+<div class="modal-backdrop" id="profile-modal">
+  <div class="modal profile-modal">
+    <div class="modal-header">
+      <h3 class="modal-title">My Profile</h3>
+      <button class="modal-close" onclick="closeProfile()">✕</button>
+    </div>
+    <div class="profile-avatar-row">
+      <div class="profile-avatar" id="prof-avatar">J</div>
+      <div>
+        <div class="profile-name" id="prof-name">—</div>
+        <div class="profile-role-badge" id="prof-role-badge">—</div>
+      </div>
+    </div>
+    <div class="profile-info-grid">
+      <div class="profile-info-item">
+        <span class="pi-label">Shop</span>
+        <span class="pi-val" id="prof-shop">—</span>
+      </div>
+      <div class="profile-info-item">
+        <span class="pi-label">Email</span>
+        <span class="pi-val" id="prof-email">—</span>
+      </div>
+      <div class="profile-info-item">
+        <span class="pi-label">Phone</span>
+        <span class="pi-val" id="prof-phone">—</span>
+      </div>
+      <div class="profile-info-item">
+        <span class="pi-label">Role</span>
+        <span class="pi-val" id="prof-role">—</span>
+      </div>
+      <div class="profile-info-item">
+        <span class="pi-label">Member Since</span>
+        <span class="pi-val" id="prof-since">—</span>
+      </div>
+    </div>
+    <div class="profile-divider"></div>
+    <h4 class="profile-edit-title">Edit Profile</h4>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="pe-name" />
+      </div>
+      <div class="form-group">
+        <label>Shop Name</label>
+        <input type="text" id="pe-shop" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Phone</label>
+        <input type="tel" id="pe-phone" />
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select id="pe-role">
+          <option value="Owner">Owner</option>
+          <option value="Manager">Manager</option>
+          <option value="Barista">Barista</option>
+          <option value="Staff">Staff</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeProfile()">Cancel</button>
+      <button class="btn-primary" onclick="saveProfile()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TERMS & CONDITIONS MODAL ══════════════════════ -->
+<div class="modal-backdrop" id="tos-modal">
+  <div class="modal tos-modal">
+    <div class="modal-header">
+      <h3 class="modal-title">Terms &amp; Conditions</h3>
+      <button class="modal-close" onclick="closeTOS()">✕</button>
+    </div>
+    <div class="tos-body">
+      <p class="tos-effective">Effective Date: January 1, 2025</p>
+
+      <h4>1. Acceptance of Terms</h4>
+      <p>By creating an account and using YGE Vault ("the System"), you agree to be bound by these Terms and Conditions. If you do not agree, please do not use the System.</p>
+
+      <h4>2. Use of the System</h4>
+      <p>YGE Vault is a coffee inventory management system intended for authorized business users. You agree to use the System solely for lawful business purposes and in accordance with these terms.</p>
+
+      <h4>3. Account Responsibility</h4>
+      <p>You are responsible for maintaining the confidentiality of your account credentials. All activities that occur under your account are your responsibility. You must notify us immediately of any unauthorized access or breach of security.</p>
+
+      <h4>4. Data & Privacy</h4>
+      <p>All inventory data you enter is stored locally on your device via browser localStorage. YGE Vault does not transmit your business data to external servers. You are solely responsible for backing up your data. We are not liable for data loss due to browser clearing, device failure, or other technical issues.</p>
+
+      <h4>5. Intellectual Property</h4>
+      <p>The YGE Vault name, logo, and system design are the intellectual property of YGE. You may not reproduce, distribute, or create derivative works without prior written consent.</p>
+
+      <h4>6. Limitation of Liability</h4>
+      <p>YGE Vault is provided "as is" without warranties of any kind. We are not liable for any direct, indirect, incidental, or consequential damages arising from your use of the System, including loss of data or business interruption.</p>
+
+      <h4>7. Prohibited Activities</h4>
+      <p>You agree not to: (a) use the System for any fraudulent or illegal purpose; (b) attempt to reverse-engineer or tamper with the System; (c) share account access with unauthorized individuals; (d) misrepresent your identity or business information.</p>
+
+      <h4>8. Modifications</h4>
+      <p>We reserve the right to modify these Terms at any time. Continued use of the System after changes constitutes acceptance of the updated Terms.</p>
+
+      <h4>9. Termination</h4>
+      <p>We reserve the right to terminate or suspend access to YGE Vault at our discretion, without notice, for conduct that violates these Terms or is harmful to other users or the business.</p>
+
+      <h4>10. Governing Law</h4>
+      <p>These Terms shall be governed by and construed in accordance with the laws of the Republic of the Philippines, without regard to conflict of law provisions.</p>
+
+      <h4>11. Contact</h4>
+      <p>For questions about these Terms, please contact us at <strong>support@ygevault.ph</strong>.</p>
+    </div>
+    <div class="tos-actions">
+      <button class="btn-primary" onclick="acceptTOS()">I Understand &amp; Accept</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast-wrap" id="toast-wrap"></div>
 
-<script>
-// ── STORAGE ──────────────────────────────────────────────
-const K = {
-  USERS: 'yge_users',
-  SESS:  'yge_sess',
-  inv:   e => 'yge_inv_' + e
-};
-
-const db = {
-  users:    () => JSON.parse(localStorage.getItem(K.USERS) || '[]'),
-  setUsers: u  => localStorage.setItem(K.USERS, JSON.stringify(u)),
-  sess:     () => JSON.parse(localStorage.getItem(K.SESS) || 'null'),
-  setSess:  u  => localStorage.setItem(K.SESS, JSON.stringify(u)),
-  clrSess:  ()  => localStorage.removeItem(K.SESS),
-  inv:      e  => JSON.parse(localStorage.getItem(K.inv(e)) || '[]'),
-  setInv:   (e, d) => localStorage.setItem(K.inv(e), JSON.stringify(d)),
-};
-
-// ── STATE ─────────────────────────────────────────────────
-let user = null, inv = [], editId = null, delId = null;
-let sKey = 'name', sAsc = true;
-
-// ── AUTH PANELS ───────────────────────────────────────────
-function showPanel(p) {
-  document.getElementById('login-panel').style.display  = p === 'login'  ? '' : 'none';
-  document.getElementById('signup-panel').style.display = p === 'signup' ? '' : 'none';
-  document.querySelectorAll('.err-box').forEach(e => { e.textContent = ''; e.classList.remove('show'); });
-}
-
-function showErr(id, msg) {
-  const el = document.getElementById(id);
-  el.textContent = msg;
-  el.classList.add('show');
-}
-
-function doLogin() {
-  const email = v('li-email').trim(), pass = v('li-pass');
-  if (!email || !pass) return showErr('login-err', 'Please fill in all fields.');
-  const found = db.users().find(u => u.email === email && u.password === pass);
-  if (!found) return showErr('login-err', 'Invalid email or password.');
-  db.setSess(found);
-  launch(found);
-}
-
-function doSignup() {
-  const name = v('su-name').trim(), shop = v('su-shop').trim(),
-        email = v('su-email').trim(), pass = v('su-pass'), conf = v('su-confirm');
-  if (!name || !shop || !email || !pass) return showErr('su-err', 'All fields are required.');
-  if (pass.length < 6) return showErr('su-err', 'Password must be at least 6 characters.');
-  if (pass !== conf) return showErr('su-err', 'Passwords do not match.');
-  const users = db.users();
-  if (users.find(u => u.email === email)) return showErr('su-err', 'Email already registered.');
-  const u = { name, shop, email, password: pass };
-  users.push(u);
-  db.setUsers(users);
-  seedData(email);
-  db.setSess(u);
-  launch(u);
-}
-
-function doLogout() {
-  db.clrSess();
-  user = null; inv = [];
-  document.getElementById('app-wrapper').style.display = 'none';
-  document.getElementById('auth-wrapper').style.display = 'flex';
-  showPanel('login');
-}
-
-function launch(u) {
-  user = u;
-  inv  = db.inv(u.email);
-  document.getElementById('auth-wrapper').style.display = 'none';
-  document.getElementById('app-wrapper').style.display  = 'block';
-  document.getElementById('hdr-name').textContent   = u.name.split(' ')[0];
-  document.getElementById('hdr-shop').textContent   = u.shop;
-  document.getElementById('hdr-avatar').textContent = u.name.charAt(0).toUpperCase();
-  render();
-}
-
-// ── SEED ─────────────────────────────────────────────────
-function seedData(email) {
-  db.setInv(email, [
-    { id: uid(), name: 'Arabica Beans',    sku:'BN-001', category:'beans',    unit:'kg',     quantity:25, threshold:5,  price:850,  supplier:'Mountain Roasters', notes:'Premium single-origin' },
-    { id: uid(), name: 'Robusta Blend',    sku:'BN-002', category:'beans',    unit:'kg',     quantity:3,  threshold:5,  price:450,  supplier:'Central Roasters',  notes:'' },
-    { id: uid(), name: 'Fresh Whole Milk', sku:'DY-001', category:'dairy',    unit:'L',      quantity:0,  threshold:10, price:90,   supplier:'Farm Fresh PH',     notes:'Daily delivery' },
-    { id: uid(), name: 'Oat Milk',         sku:'DY-002', category:'dairy',    unit:'L',      quantity:12, threshold:5,  price:185,  supplier:"Nature's Best",     notes:'' },
-    { id: uid(), name: 'Vanilla Syrup',    sku:'SY-001', category:'syrups',   unit:'bottle', quantity:8,  threshold:3,  price:320,  supplier:'Monin PH',          notes:'750mL bottles' },
-    { id: uid(), name: 'Caramel Syrup',    sku:'SY-002', category:'syrups',   unit:'bottle', quantity:2,  threshold:3,  price:320,  supplier:'Monin PH',          notes:'' },
-    { id: uid(), name: 'Paper Cups 8oz',   sku:'SP-001', category:'supplies', unit:'pack',   quantity:15, threshold:5,  price:280,  supplier:'PackIt PH',         notes:'50 pcs/pack' },
-    { id: uid(), name: 'Coffee Filters',   sku:'SP-002', category:'supplies', unit:'box',    quantity:4,  threshold:2,  price:150,  supplier:'BrewSupply',        notes:'' },
-    { id: uid(), name: 'Espresso Tamper',  sku:'EQ-001', category:'equipment',unit:'pcs',    quantity:2,  threshold:1,  price:1200, supplier:'BaristaPro',        notes:'58mm stainless' },
-  ]);
-}
-
-// ── RENDER ────────────────────────────────────────────────
-function render() {
-  const s   = v('srch').toLowerCase();
-  const cat = v('cat-f');
-  let rows  = inv.filter(i => {
-    const ms = i.name.toLowerCase().includes(s) || (i.sku||'').toLowerCase().includes(s) || (i.supplier||'').toLowerCase().includes(s);
-    return ms && (!cat || i.category === cat);
-  });
-  rows.sort((a, b) => {
-    let va = a[sKey] ?? '', vb = b[sKey] ?? '';
-    if (typeof va === 'string') { va = va.toLowerCase(); vb = vb.toLowerCase(); }
-    return sAsc ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
-  });
-
-  const tbody = document.getElementById('inv-tbody');
-  const empty = document.getElementById('empty-st');
-
-  if (!rows.length) {
-    tbody.innerHTML = '';
-    empty.style.display = '';
-  } else {
-    empty.style.display = 'none';
-    tbody.innerHTML = rows.map(it => {
-      const st = stockSt(it);
-      return `<tr>
-        <td>
-          <div class="item-name">${esc(it.name)}</div>
-          <div class="item-sku">${esc(it.sku||'—')}</div>
-        </td>
-        <td><span class="badge badge-${it.category}">${cap(it.category)}</span></td>
-        <td style="font-weight:500;">${it.quantity}</td>
-        <td style="color:var(--muted);font-size:0.8rem;">${esc(it.unit)}</td>
-        <td style="font-family:'DM Mono',monospace;font-size:0.8rem;">₱${(+it.price||0).toFixed(2)}</td>
-        <td><span class="${st.cls}">${st.label}</span></td>
-        <td>
-          <div class="actions">
-            <button class="btn-edit" onclick="openEdit('${it.id}')">Edit</button>
-            <button class="btn-del"  onclick="openDel('${it.id}')">Remove</button>
-          </div>
-        </td>
-      </tr>`;
-    }).join('');
-  }
-  updateStats();
-}
-
-function stockSt(it) {
-  if (it.quantity <= 0)                        return { cls:'stock-out', label:'● Out of stock' };
-  if (it.quantity <= (it.threshold || 5))      return { cls:'stock-low', label:'● Low stock' };
-  return { cls:'stock-ok', label:'● In stock' };
-}
-
-function updateStats() {
-  const total = inv.length;
-  const low   = inv.filter(i => i.quantity > 0 && i.quantity <= (i.threshold||5)).length;
-  const out   = inv.filter(i => i.quantity <= 0).length;
-  const val   = inv.reduce((s,i) => s + (+i.price||0)*(+i.quantity||0), 0);
-  document.getElementById('st-total').textContent = total;
-  document.getElementById('st-low').textContent   = low;
-  document.getElementById('st-out').textContent   = out;
-  document.getElementById('st-val').textContent   = '₱' + val.toLocaleString('en-PH', {minimumFractionDigits:0});
-}
-
-function sort(k) {
-  sKey = k === sKey ? sKey : k;
-  sAsc = k === sKey ? !sAsc : true;
-  sKey = k;
-  render();
-}
-
-// ── ITEM MODAL ────────────────────────────────────────────
-function openAdd() {
-  editId = null;
-  document.getElementById('m-title').textContent = 'Add New Item';
-  clearForm();
-  document.getElementById('item-modal').classList.add('show');
-}
-
-function openEdit(id) {
-  const it = inv.find(i => i.id === id);
-  if (!it) return;
-  editId = id;
-  document.getElementById('m-title').textContent = 'Edit Item';
-  set('f-name',     it.name);
-  set('f-sku',      it.sku||'');
-  set('f-cat',      it.category);
-  set('f-unit',     it.unit);
-  set('f-qty',      it.quantity);
-  set('f-thresh',   it.threshold||'');
-  set('f-price',    it.price||'');
-  set('f-supplier', it.supplier||'');
-  set('f-notes',    it.notes||'');
-  document.getElementById('item-modal').classList.add('show');
-}
-
-function closeModal() {
-  document.getElementById('item-modal').classList.remove('show');
-  editId = null;
-  clearForm();
-}
-
-function clearForm() {
-  ['f-name','f-sku','f-qty','f-thresh','f-price','f-supplier','f-notes'].forEach(set);
-  set('f-cat', '');
-  set('f-unit', 'kg');
-}
-
-function saveItem() {
-  const name = v('f-name').trim();
-  const cat  = v('f-cat');
-  const qty  = parseFloat(v('f-qty'));
-  if (!name)         return toast('Item name is required.', 'danger');
-  if (!cat)          return toast('Please select a category.', 'danger');
-  if (isNaN(qty) || qty < 0) return toast('Enter a valid quantity.', 'danger');
-
-  const item = {
-    id:        editId || uid(),
-    name,
-    sku:       v('f-sku').trim(),
-    category:  cat,
-    unit:      v('f-unit'),
-    quantity:  qty,
-    threshold: parseFloat(v('f-thresh')) || 5,
-    price:     parseFloat(v('f-price'))  || 0,
-    supplier:  v('f-supplier').trim(),
-    notes:     v('f-notes').trim(),
-    updatedAt: new Date().toISOString(),
-  };
-
-  if (editId) {
-    const idx = inv.findIndex(i => i.id === editId);
-    inv[idx] = item;
-    toast('Item updated!', 'success');
-  } else {
-    item.createdAt = item.updatedAt;
-    inv.unshift(item);
-    toast('Item added to inventory!', 'success');
-  }
-
-  db.setInv(user.email, inv);
-  closeModal();
-  render();
-}
-
-// ── DELETE ────────────────────────────────────────────────
-function openDel(id) {
-  delId = id;
-  const it = inv.find(i => i.id === id);
-  document.getElementById('del-msg').textContent = `"${it?.name}" will be permanently removed.`;
-  document.getElementById('del-modal').classList.add('show');
-}
-
-function closeDelModal() {
-  document.getElementById('del-modal').classList.remove('show');
-  delId = null;
-}
-
-function confirmDel() {
-  if (!delId) return;
-  inv = inv.filter(i => i.id !== delId);
-  db.setInv(user.email, inv);
-  closeDelModal();
-  render();
-  toast('Item removed.', 'danger');
-}
-
-// ── TOAST ─────────────────────────────────────────────────
-function toast(msg, type) {
-  const icon = type === 'success' ? '✓' : '✕';
-  const el   = document.createElement('div');
-  el.className = `toast t-${type||'success'}`;
-  el.innerHTML = `<span>${icon}</span>${msg}`;
-  document.getElementById('toast-wrap').appendChild(el);
-  setTimeout(() => el.remove(), 3200);
-}
-
-// ── HELPERS ───────────────────────────────────────────────
-function uid()     { return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
-function v(id)     { return document.getElementById(id)?.value ?? ''; }
-function set(id,val='') { const el = document.getElementById(id); if (el) el.value = val; }
-function esc(s)    { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function cap(s)    { return s ? s[0].toUpperCase()+s.slice(1) : ''; }
-
-// backdrop clicks
-['item-modal','del-modal'].forEach(id => {
-  document.getElementById(id).addEventListener('click', function(e) {
-    if (e.target === this) { id === 'item-modal' ? closeModal() : closeDelModal(); }
-  });
-});
-
-// enter key on auth inputs
-document.addEventListener('keydown', e => {
-  if (e.key !== 'Enter') return;
-  const lp = document.getElementById('login-panel');
-  const sp = document.getElementById('signup-panel');
-  if (lp && lp.style.display !== 'none') doLogin();
-  else if (sp && sp.style.display !== 'none') doSignup();
-});
-
-// ── INIT ──────────────────────────────────────────────────
-(function() {
-  const s = db.sess();
-  if (s) launch(s);
-})();
-</script>
+<script src="app.js"></script>
 </body>
 </html>
