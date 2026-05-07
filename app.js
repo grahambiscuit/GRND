@@ -1,6 +1,6 @@
 // ── AUTO-CLEAR OLD SEED DATA ──────────────────────────────
 (function() {
-  const VERSION = 'yge_v2';
+  const VERSION = 'grnd_v1';
   if (!localStorage.getItem(VERSION)) {
     localStorage.clear();
     localStorage.setItem(VERSION, '1');
@@ -9,9 +9,10 @@
 
 // ── STORAGE ──────────────────────────────────────────────
 const K = {
-  USERS: 'yge_users',
-  SESS:  'yge_sess',
-  inv:   e => 'yge_inv_' + e
+  USERS: 'grnd_users',
+  SESS:  'grnd_sess',
+  THEME: 'grnd_theme',
+  inv:   e => 'grnd_inv_' + e
 };
 
 const db = {
@@ -29,6 +30,24 @@ let user = null, inv = [], editId = null, delId = null;
 let sKey = 'name', sAsc = true;
 let currentTab = 'inventory';
 let bannerDismissed = false;
+
+// ── THEME ─────────────────────────────────────────────────
+function initTheme() {
+  const saved = localStorage.getItem(K.THEME) || 'light';
+  applyTheme(saved);
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem(K.THEME, theme);
+  const btn = document.getElementById('theme-btn');
+  if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
 
 // ── AUTH PANELS ───────────────────────────────────────────
 function showPanel(p) {
@@ -93,28 +112,12 @@ function launch(u) {
   inv  = db.inv(u.email);
   document.getElementById('auth-wrapper').style.display = 'none';
   document.getElementById('app-wrapper').style.display  = 'block';
-  const firstName = u.name.split(' ')[0];
-  document.getElementById('hdr-name').textContent   = firstName;
+  document.getElementById('hdr-name').textContent   = u.name.split(' ')[0];
   document.getElementById('hdr-shop').textContent   = u.shop;
   document.getElementById('hdr-avatar').textContent = u.name.charAt(0).toUpperCase();
   bannerDismissed = false;
   switchTab('inventory');
   render();
-}
-
-// ── SEED ─────────────────────────────────────────────────
-function seedData(email) {
-  db.setInv(email, [
-    { id: uid(), name: 'Arabica Beans',    sku:'BN-001', category:'beans',    unit:'kg',     quantity:25, threshold:5,  price:850,  supplier:'Mountain Roasters', notes:'Premium single-origin' },
-    { id: uid(), name: 'Robusta Blend',    sku:'BN-002', category:'beans',    unit:'kg',     quantity:3,  threshold:5,  price:450,  supplier:'Central Roasters',  notes:'' },
-    { id: uid(), name: 'Fresh Whole Milk', sku:'DY-001', category:'dairy',    unit:'L',      quantity:0,  threshold:10, price:90,   supplier:'Farm Fresh PH',     notes:'Daily delivery' },
-    { id: uid(), name: 'Oat Milk',         sku:'DY-002', category:'dairy',    unit:'L',      quantity:12, threshold:5,  price:185,  supplier:"Nature's Best",     notes:'' },
-    { id: uid(), name: 'Vanilla Syrup',    sku:'SY-001', category:'syrups',   unit:'bottle', quantity:8,  threshold:3,  price:320,  supplier:'Monin PH',          notes:'750mL bottles' },
-    { id: uid(), name: 'Caramel Syrup',    sku:'SY-002', category:'syrups',   unit:'bottle', quantity:2,  threshold:3,  price:320,  supplier:'Monin PH',          notes:'' },
-    { id: uid(), name: 'Paper Cups 8oz',   sku:'SP-001', category:'supplies', unit:'pack',   quantity:15, threshold:5,  price:280,  supplier:'PackIt PH',         notes:'50 pcs/pack' },
-    { id: uid(), name: 'Coffee Filters',   sku:'SP-002', category:'supplies', unit:'box',    quantity:4,  threshold:2,  price:150,  supplier:'BrewSupply',        notes:'' },
-    { id: uid(), name: 'Espresso Tamper',  sku:'EQ-001', category:'equipment',unit:'pcs',    quantity:2,  threshold:1,  price:1200, supplier:'BaristaPro',        notes:'58mm stainless' },
-  ]);
 }
 
 // ── TAB SWITCHING ─────────────────────────────────────────
@@ -128,12 +131,12 @@ function switchTab(tab) {
   if (tab === 'reports') renderReports();
 }
 
-// ── RENDER (INVENTORY TABLE) ──────────────────────────────
+// ── RENDER ────────────────────────────────────────────────
 function render() {
   const s   = v('srch').toLowerCase();
   const cat = v('cat-f');
   let rows  = inv.filter(i => {
-    const ms = i.name.toLowerCase().includes(s) || (i.sku||'').toLowerCase().includes(s) || (i.supplier||'').toLowerCase().includes(s);
+    const ms = i.name.toLowerCase().includes(s) || (i.category||'').toLowerCase().includes(s);
     return ms && (!cat || i.category === cat);
   });
   rows.sort((a, b) => {
@@ -153,13 +156,10 @@ function render() {
     tbody.innerHTML = rows.map(it => {
       const st = stockSt(it);
       return `<tr>
-        <td>
-          <div class="item-name">${esc(it.name)}</div>
-          <div class="item-sku">${esc(it.sku||'—')}</div>
-        </td>
+        <td><div class="item-name">${esc(it.name)}</div></td>
         <td><span class="badge badge-${it.category}">${cap(it.category)}</span></td>
         <td style="font-weight:500;">${it.quantity}</td>
-        <td style="color:var(--muted);font-size:0.8rem;">${esc(it.unit)}</td>
+        <td style="color:var(--text3);font-size:0.8rem;">${esc(it.unit)}</td>
         <td style="font-family:'DM Mono',monospace;font-size:0.8rem;">₱${(+it.price||0).toFixed(2)}</td>
         <td><span class="${st.cls}">${st.label}</span></td>
         <td>
@@ -195,7 +195,6 @@ function updateStats() {
 }
 
 function sort(k) {
-  sKey = k === sKey ? sKey : k;
   sAsc = k === sKey ? !sAsc : true;
   sKey = k;
   render();
@@ -209,10 +208,7 @@ function updateAlertBanner() {
   const banner = document.getElementById('alert-banner');
   const text   = document.getElementById('alert-text');
 
-  if (!out.length && !low.length) {
-    banner.style.display = 'none';
-    return;
-  }
+  if (!out.length && !low.length) { banner.style.display = 'none'; return; }
 
   const parts = [];
   if (out.length) parts.push(`${out.length} item${out.length > 1 ? 's are' : ' is'} out of stock`);
@@ -228,9 +224,9 @@ function dismissBanner() {
 
 // ── NOTIFICATIONS ─────────────────────────────────────────
 function updateNotifications() {
-  const out  = inv.filter(i => i.quantity <= 0);
-  const low  = inv.filter(i => i.quantity > 0 && i.quantity <= (i.threshold||5));
-  const all  = [
+  const out = inv.filter(i => i.quantity <= 0);
+  const low = inv.filter(i => i.quantity > 0 && i.quantity <= (i.threshold||5));
+  const all = [
     ...out.map(i => ({ item: i, type: 'out' })),
     ...low.map(i => ({ item: i, type: 'low' }))
   ];
@@ -251,7 +247,7 @@ function updateNotifications() {
   }
 
   list.innerHTML = all.map(({ item, type }) => {
-    const label  = type === 'out' ? 'Out of stock' : `Low stock — ${item.quantity} ${item.unit} left`;
+    const label = type === 'out' ? 'Out of stock' : `Low stock — ${item.quantity} ${item.unit} left`;
     return `<div class="notif-item">
       <div class="notif-dot ${type}"></div>
       <div class="notif-item-text">
@@ -267,7 +263,6 @@ function toggleNotifPanel() {
   panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
 }
 
-// Close notif panel on outside click
 document.addEventListener('click', function(e) {
   const wrap = document.getElementById('notif-wrap');
   if (wrap && !wrap.contains(e.target)) {
@@ -278,26 +273,20 @@ document.addEventListener('click', function(e) {
 
 // ── REPORTS ───────────────────────────────────────────────
 function renderReports() {
-  const total = inv.length;
-  const out   = inv.filter(i => i.quantity <= 0);
-  const low   = inv.filter(i => i.quantity > 0 && i.quantity <= (i.threshold||5));
-  const ok    = inv.filter(i => i.quantity > (i.threshold||5));
-  const val   = inv.reduce((s,i) => s + (+i.price||0)*(+i.quantity||0), 0);
+  const out  = inv.filter(i => i.quantity <= 0);
+  const low  = inv.filter(i => i.quantity > 0 && i.quantity <= (i.threshold||5));
+  const ok   = inv.filter(i => i.quantity > (i.threshold||5));
+  const val  = inv.reduce((s,i) => s + (+i.price||0)*(+i.quantity||0), 0);
 
   document.getElementById('rpt-ok').textContent  = ok.length;
   document.getElementById('rpt-low').textContent = low.length;
   document.getElementById('rpt-out').textContent = out.length;
   document.getElementById('rpt-val').textContent = '₱' + val.toLocaleString('en-PH', {minimumFractionDigits:0});
 
-  // Category bars
   const cats = ['beans','dairy','syrups','equipment','supplies','other'];
   const catCounts = {};
   cats.forEach(c => catCounts[c] = inv.filter(i => i.category === c).length);
   const maxCount = Math.max(...Object.values(catCounts), 1);
-  const catColors = {
-    beans: '#e8a84c', dairy: '#c8b99a', syrups: '#c39bd3',
-    equipment: '#7fb3d3', supplies: '#7dcea0', other: '#9a7d5a'
-  };
 
   document.getElementById('cat-bars').innerHTML = cats
     .filter(c => catCounts[c] > 0)
@@ -306,13 +295,12 @@ function renderReports() {
       <div class="cat-bar-row">
         <div class="cat-bar-label">${cap(c)}</div>
         <div class="cat-bar-track">
-          <div class="cat-bar-fill" style="width:${(catCounts[c]/maxCount*100).toFixed(1)}%; background:${catColors[c]};"></div>
+          <div class="cat-bar-fill" style="width:${(catCounts[c]/maxCount*100).toFixed(1)}%;"></div>
         </div>
         <div class="cat-bar-count">${catCounts[c]}</div>
       </div>`
     ).join('') || '<p class="report-empty">No items yet.</p>';
 
-  // Items needing attention
   const critical = [...out, ...low].sort((a,b) => a.quantity - b.quantity);
   const attEl = document.getElementById('attention-list');
   if (!critical.length) {
@@ -325,7 +313,7 @@ function renderReports() {
           <div class="att-icon">${isOut ? '🚫' : '⚠️'}</div>
           <div>
             <div class="att-name">${esc(it.name)}</div>
-            <div class="att-sku">${esc(it.sku||'No SKU')} · ${cap(it.category)}</div>
+            <div class="att-sku">${cap(it.category)}</div>
           </div>
         </div>
         <div class="att-right">
@@ -336,7 +324,6 @@ function renderReports() {
     }).join('');
   }
 
-  // Top value items
   const topVal = [...inv]
     .map(i => ({ ...i, totalVal: (+i.price||0) * (+i.quantity||0) }))
     .filter(i => i.totalVal > 0)
@@ -373,15 +360,13 @@ function openEdit(id) {
   if (!it) return;
   editId = id;
   document.getElementById('m-title').textContent = 'Edit Item';
-  set('f-name',     it.name);
-  set('f-sku',      it.sku||'');
-  set('f-cat',      it.category);
-  set('f-unit',     it.unit);
-  set('f-qty',      it.quantity);
-  set('f-thresh',   it.threshold||'');
-  set('f-price',    it.price||'');
-  set('f-supplier', it.supplier||'');
-  set('f-notes',    it.notes||'');
+  set('f-name',   it.name);
+  set('f-cat',    it.category);
+  set('f-unit',   it.unit);
+  set('f-qty',    it.quantity);
+  set('f-thresh', it.threshold||'');
+  set('f-price',  it.price||'');
+  set('f-notes',  it.notes||'');
   document.getElementById('item-modal').classList.add('show');
 }
 
@@ -392,7 +377,7 @@ function closeModal() {
 }
 
 function clearForm() {
-  ['f-name','f-sku','f-qty','f-thresh','f-price','f-supplier','f-notes'].forEach(id => set(id));
+  ['f-name','f-qty','f-thresh','f-price','f-notes'].forEach(id => set(id));
   set('f-cat', '');
   set('f-unit', 'kg');
 }
@@ -408,13 +393,11 @@ function saveItem() {
   const item = {
     id:        editId || uid(),
     name,
-    sku:       v('f-sku').trim(),
     category:  cat,
     unit:      v('f-unit'),
     quantity:  qty,
     threshold: parseFloat(v('f-thresh')) || 5,
     price:     parseFloat(v('f-price'))  || 0,
-    supplier:  v('f-supplier').trim(),
     notes:     v('f-notes').trim(),
     updatedAt: new Date().toISOString(),
   };
@@ -460,18 +443,17 @@ function confirmDel() {
 // ── PROFILE ───────────────────────────────────────────────
 function openProfile() {
   const u = user;
-  document.getElementById('prof-avatar').textContent    = u.name.charAt(0).toUpperCase();
-  document.getElementById('prof-name').textContent      = u.name;
+  document.getElementById('prof-avatar').textContent     = u.name.charAt(0).toUpperCase();
+  document.getElementById('prof-name').textContent       = u.name;
   document.getElementById('prof-role-badge').textContent = u.role || 'Staff';
-  document.getElementById('prof-shop').textContent      = u.shop;
-  document.getElementById('prof-email').textContent     = u.email;
-  document.getElementById('prof-phone').textContent     = u.phone || '—';
-  document.getElementById('prof-role').textContent      = u.role  || '—';
-  document.getElementById('prof-since').textContent     = u.createdAt
+  document.getElementById('prof-shop').textContent       = u.shop;
+  document.getElementById('prof-email').textContent      = u.email;
+  document.getElementById('prof-phone').textContent      = u.phone || '—';
+  document.getElementById('prof-role').textContent       = u.role  || '—';
+  document.getElementById('prof-since').textContent      = u.createdAt
     ? new Date(u.createdAt).toLocaleDateString('en-PH', { year:'numeric', month:'long', day:'numeric' })
     : 'N/A';
 
-  // Prefill edit fields
   set('pe-name',  u.name);
   set('pe-shop',  u.shop);
   set('pe-phone', u.phone || '');
@@ -493,20 +475,17 @@ function saveProfile() {
   if (!name) return toast('Name cannot be empty.', 'danger');
   if (!shop) return toast('Shop name cannot be empty.', 'danger');
 
-  // Update user object
   user.name  = name;
   user.shop  = shop;
   user.phone = phone;
   user.role  = role;
 
-  // Persist to users list
   const users = db.users();
   const idx = users.findIndex(u => u.email === user.email);
   if (idx !== -1) users[idx] = user;
   db.setUsers(users);
   db.setSess(user);
 
-  // Update header
   document.getElementById('hdr-name').textContent   = name.split(' ')[0];
   document.getElementById('hdr-shop').textContent   = shop;
   document.getElementById('hdr-avatar').textContent = name.charAt(0).toUpperCase();
@@ -541,18 +520,18 @@ function toast(msg, type) {
 }
 
 // ── HELPERS ───────────────────────────────────────────────
-function uid()     { return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
-function v(id)     { return document.getElementById(id)?.value ?? ''; }
+function uid()          { return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+function v(id)          { return document.getElementById(id)?.value ?? ''; }
 function set(id, val='') { const el = document.getElementById(id); if (el) el.value = val; }
-function esc(s)    { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function cap(s)    { return s ? s[0].toUpperCase()+s.slice(1) : ''; }
+function esc(s)         { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function cap(s)         { return s ? s[0].toUpperCase()+s.slice(1) : ''; }
 
 // ── BACKDROP CLICK CLOSE ──────────────────────────────────
 ['item-modal','del-modal','profile-modal','tos-modal'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('click', function(e) {
     if (e.target !== this) return;
-    if (id === 'item-modal')    closeModal();
+    if (id === 'item-modal')         closeModal();
     else if (id === 'del-modal')     closeDelModal();
     else if (id === 'profile-modal') closeProfile();
     else if (id === 'tos-modal')     closeTOS();
@@ -570,6 +549,7 @@ document.addEventListener('keydown', e => {
 
 // ── INIT ──────────────────────────────────────────────────
 (function() {
+  initTheme();
   const s = db.sess();
   if (s) launch(s);
 })();
