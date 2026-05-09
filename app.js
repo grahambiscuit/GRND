@@ -30,7 +30,6 @@ const db = {
 };
 
 // ── ROLE ACCESS CONTROL ───────────────────────────────────
-// Permissions per role: what tabs/actions are visible
 const ROLE_ACCESS = {
   Admin:   { inventory:true,  sales:true,  reports:true,  activity:true,  admin:true,  canAdd:true,  canEdit:true,  canDelete:true,  canMove:true  },
   Owner:   { inventory:true,  sales:true,  reports:true,  activity:true,  admin:false, canAdd:true,  canEdit:true,  canDelete:true,  canMove:true  },
@@ -82,7 +81,6 @@ function seedInventory(email) {
     ...s,
   }));
 
-  // Seed some historical activity log (last 30 days)
   const logs = [];
   const types = ['add','sell','use','sell','sell','add'];
   const notes = ['Morning restock','Customer order','Bar usage','Take-out order','Dine-in order','Supplier delivery'];
@@ -187,10 +185,7 @@ function doSignup() {
   users.push(u);
   db.setUsers(users);
   db.setSess(u);
-
-  // Seed inventory for new users
   seedInventory(email);
-
   launch(u);
 }
 
@@ -207,7 +202,6 @@ function launch(u) {
   inv      = db.inv(u.email);
   stockLog = db.log(u.email);
 
-  // Seed if somehow empty (e.g. returning user on new version)
   if (!inv.length) {
     seedInventory(u.email);
     inv      = db.inv(u.email);
@@ -229,7 +223,6 @@ function launch(u) {
 // ── ROLE-BASED NAV ────────────────────────────────────────
 function setupNavForRole() {
   const tabs = ['inventory','sales','reports','activity','admin'];
-  const tabMap = { inventory:'inventory', sales:'sales', reports:'reports', activity:'activity', admin:'admin' };
   tabs.forEach(t => {
     const btn = document.getElementById('tab-' + t);
     if (btn) btn.style.display = perm(t) ? '' : 'none';
@@ -238,10 +231,7 @@ function setupNavForRole() {
 
 // ── TAB SWITCHING ─────────────────────────────────────────
 function switchTab(tab) {
-  // Check access
-  if (!perm(tab)) {
-    tab = 'inventory'; // fallback
-  }
+  if (!perm(tab)) tab = 'inventory';
   currentTab = tab;
   ['inventory','sales','reports','activity','admin'].forEach(t => {
     const view = document.getElementById('view-' + t);
@@ -305,8 +295,8 @@ function render() {
 }
 
 function stockSt(it) {
-  if (it.quantity <= 0)                     return { cls:'stock-out', label:'Out of stock' };
-  if (it.quantity <= (it.threshold || 5))  return { cls:'stock-low', label:'Low stock' };
+  if (it.quantity <= 0)                    return { cls:'stock-out', label:'Out of stock' };
+  if (it.quantity <= (it.threshold || 5)) return { cls:'stock-low', label:'Low stock' };
   return { cls:'stock-ok', label:'In stock' };
 }
 
@@ -352,20 +342,14 @@ function dismissBanner() {
 function updateNotifications() {
   const out = inv.filter(i => i.quantity <= 0);
   const low = inv.filter(i => i.quantity > 0 && i.quantity <= (i.threshold||5));
-  const all = [
-    ...out.map(i => ({ item: i, type: 'out' })),
-    ...low.map(i => ({ item: i, type: 'low' }))
-  ];
+  const all = [...out.map(i => ({ item: i, type: 'out' })), ...low.map(i => ({ item: i, type: 'low' }))];
 
   const badge = document.getElementById('notif-badge');
   badge.style.display = all.length > 0 ? 'flex' : 'none';
   badge.textContent   = all.length > 9 ? '9+' : all.length;
 
   const list = document.getElementById('notif-list');
-  if (!all.length) {
-    list.innerHTML = '<div class="notif-empty">All stock levels are good!</div>';
-    return;
-  }
+  if (!all.length) { list.innerHTML = '<div class="notif-empty">All stock levels are good!</div>'; return; }
 
   list.innerHTML = all.map(({ item, type }) => {
     const label = type === 'out' ? 'Out of stock' : `Low — ${item.quantity} ${item.unit} left`;
@@ -421,13 +405,11 @@ function openMove(id) {
 
   document.getElementById('move-item-name').textContent    = it.name;
   document.getElementById('move-current-qty').textContent  = `Current stock: ${it.quantity} ${it.unit}`;
-  // Reset radio
   const radios = document.querySelectorAll('input[name="move-type"]');
   radios.forEach(r => { r.checked = r.value === 'add'; });
   set('move-qty', '');
   set('move-note', '');
   updateMovePreview(it);
-
   document.getElementById('move-modal').classList.add('show');
 }
 
@@ -480,17 +462,10 @@ function confirmMove() {
   it.updatedAt = new Date().toISOString();
 
   const entry = {
-    id:        uid(),
-    itemId:    it.id,
-    itemName:  it.name,
-    type,
-    qty,
-    prevQty,
-    newQty:    it.quantity,
-    unit:      it.unit,
-    price:     it.price || 0,
-    note,
-    ts:        new Date().toISOString(),
+    id: uid(), itemId: it.id, itemName: it.name,
+    type, qty, prevQty, newQty: it.quantity,
+    unit: it.unit, price: it.price || 0, note,
+    ts: new Date().toISOString(),
   };
   stockLog.unshift(entry);
   if (stockLog.length > 500) stockLog = stockLog.slice(0, 500);
@@ -560,8 +535,7 @@ function saveItem() {
   const isNew = !editId;
   const item = {
     id:        editId || uid(),
-    name,
-    category:  cat,
+    name, category: cat,
     unit:      v('f-unit'),
     quantity:  qty,
     threshold: parseFloat(v('f-thresh')) || 5,
@@ -646,18 +620,15 @@ function renderSales() {
   if (period === 'today') {
     since = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   } else if (period === 'week') {
-    const d = new Date(now); d.setDate(d.getDate() - 7);
-    since = d.toISOString();
+    const d = new Date(now); d.setDate(d.getDate() - 7); since = d.toISOString();
   } else if (period === 'month') {
-    const d = new Date(now); d.setDate(d.getDate() - 30);
-    since = d.toISOString();
+    const d = new Date(now); d.setDate(d.getDate() - 30); since = d.toISOString();
   } else {
     since = '2000-01-01T00:00:00.000Z';
   }
 
   const sales = stockLog.filter(e => e.type === 'sell' && e.ts >= since);
 
-  // Revenue: qty * price per log entry
   const totalRev = sales.reduce((s, e) => {
     const item = inv.find(i => i.id === e.itemId);
     const price = e.price || item?.price || 0;
@@ -672,7 +643,6 @@ function renderSales() {
   document.getElementById('sl-txn').textContent    = sales.length;
   document.getElementById('sl-avg').textContent    = '₱' + avgPerSale.toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2});
 
-  // Sales by item
   const byItem = {};
   sales.forEach(e => {
     const item = inv.find(i => i.id === e.itemId);
@@ -704,7 +674,6 @@ function renderSales() {
     ).join('');
   }
 
-  // Recent sales
   const recentEl = document.getElementById('sales-recent');
   if (!sales.length) {
     recentEl.innerHTML = '<p class="report-empty">No sales recorded in this period.</p>';
@@ -715,9 +684,7 @@ function renderSales() {
       const rev = price * e.qty;
       const dt = new Date(e.ts).toLocaleString('en-PH', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
       return `<div class="sales-txn-row">
-        <div class="txn-icon">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-        </div>
+        <div class="txn-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
         <div style="flex:1;min-width:0;">
           <div class="txn-item">${esc(e.itemName)}</div>
           <div class="txn-detail">${e.qty} ${esc(e.unit)} × ₱${price.toFixed(2)}${e.note ? ' · ' + esc(e.note) : ''}</div>
@@ -730,7 +697,6 @@ function renderSales() {
     }).join('');
   }
 
-  // Timeline (daily breakdown)
   const dayMap = {};
   sales.forEach(e => {
     const day = e.ts.slice(0, 10);
@@ -753,9 +719,7 @@ function renderSales() {
       const val = dayMap[day];
       return `<div class="timeline-row">
         <div class="timeline-date">${label}</div>
-        <div class="timeline-bar-track">
-          <div class="timeline-bar-fill" style="width:${(val/maxDay*100).toFixed(1)}%;"></div>
-        </div>
+        <div class="timeline-bar-track"><div class="timeline-bar-fill" style="width:${(val/maxDay*100).toFixed(1)}%;"></div></div>
         <div class="timeline-val">₱${val.toLocaleString('en-PH',{minimumFractionDigits:0})}</div>
       </div>`;
     }).join('');
@@ -776,7 +740,6 @@ function renderReports() {
   document.getElementById('rpt-out').textContent = out.length;
   document.getElementById('rpt-val').textContent = '₱' + val.toLocaleString('en-PH', {minimumFractionDigits:0});
 
-  // Category bars
   const cats = ['beans','dairy','syrups','equipment','supplies','other'];
   const catCounts = {};
   cats.forEach(c => catCounts[c] = inv.filter(i => i.category === c).length);
@@ -793,7 +756,6 @@ function renderReports() {
       </div>`
     ).join('') || '<p class="report-empty">No items yet.</p>';
 
-  // Critical items
   const critical = [...out, ...low].sort((a,b) => a.quantity - b.quantity);
   const attEl = document.getElementById('attention-list');
   attEl.innerHTML = !critical.length
@@ -820,7 +782,6 @@ function renderReports() {
         </div>`;
       }).join('');
 
-  // Top value
   const topVal = [...inv]
     .map(i => ({ ...i, totalVal: (+i.price||0) * (+i.quantity||0) }))
     .filter(i => i.totalVal > 0)
@@ -840,12 +801,11 @@ function renderReports() {
         </div>`
       ).join('');
 
-  // Movement summary
   const since = new Date(Date.now() - 30*24*60*60*1000).toISOString();
   const recent = stockLog.filter(e => e.ts >= since);
-  const soldQty   = recent.filter(e => e.type==='sell').reduce((s,e) => s+e.qty, 0);
-  const usedQty   = recent.filter(e => e.type==='use').reduce((s,e) => s+e.qty, 0);
-  const addedQty  = recent.filter(e => e.type==='add').reduce((s,e) => s+e.qty, 0);
+  const soldQty  = recent.filter(e => e.type==='sell').reduce((s,e) => s+e.qty, 0);
+  const usedQty  = recent.filter(e => e.type==='use').reduce((s,e) => s+e.qty, 0);
+  const addedQty = recent.filter(e => e.type==='add').reduce((s,e) => s+e.qty, 0);
   const moveEl = document.getElementById('rpt-movements');
   if (moveEl) {
     moveEl.innerHTML = `
@@ -863,10 +823,7 @@ function renderActivity() {
   if (!perm('activity')) return;
   const el = document.getElementById('activity-list');
   if (!stockLog.length) {
-    el.innerHTML = `<div class="empty-state">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-      <p>No stock movements recorded yet.</p>
-    </div>`;
+    el.innerHTML = `<div class="empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><p>No stock movements recorded yet.</p></div>`;
     return;
   }
 
@@ -886,14 +843,8 @@ function renderActivity() {
     return `<div class="act-item">
       <div class="act-icon-wrap ${cfg.cls}">${cfg.svg}</div>
       <div class="act-body">
-        <div class="act-title">
-          <span class="act-label ${cfg.cls}-text">${cfg.label}</span>
-          <span class="act-item-name">${esc(e.itemName)}</span>
-        </div>
-        <div class="act-detail">
-          ${e.prevQty} → ${e.newQty} ${esc(e.unit)}
-          ${e.note ? `<span class="act-note">· ${esc(e.note)}</span>` : ''}
-        </div>
+        <div class="act-title"><span class="act-label ${cfg.cls}-text">${cfg.label}</span><span class="act-item-name">${esc(e.itemName)}</span></div>
+        <div class="act-detail">${e.prevQty} → ${e.newQty} ${esc(e.unit)}${e.note ? ` <span class="act-note">· ${esc(e.note)}</span>` : ''}</div>
       </div>
       <div class="act-meta">
         <div class="act-change ${isPos ? 'pos' : 'neg'}">${change} ${esc(e.unit)}</div>
@@ -907,7 +858,6 @@ function renderActivity() {
 function renderAdmin() {
   if (!perm('admin')) return;
 
-  // Users table
   const users = db.users();
   const tbody = document.getElementById('admin-users-tbody');
   tbody.innerHTML = users.map(u => `
@@ -921,7 +871,6 @@ function renderAdmin() {
     </tr>`
   ).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:2rem;">No users found.</td></tr>';
 
-  // Role access matrix
   const features = [
     { key:'inventory',  label:'View Inventory' },
     { key:'canMove',    label:'Update Stock (+/- Stock)' },
@@ -1051,3 +1000,405 @@ document.addEventListener('keydown', e => {
   const s = db.sess();
   if (s) launch(s);
 })();
+
+// ═══════════════════════════════════════════════════════════
+// ── PDF / PRINT EXPORT ─────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+
+function peso(v) {
+  return '₱' + (+v || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function pesoShort(v) {
+  return '₱' + (+v || 0).toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function buildSalesData(period) {
+  const now = new Date();
+  let since;
+  if (period === 'today') {
+    since = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  } else if (period === 'week') {
+    const d = new Date(now); d.setDate(d.getDate() - 7); since = d.toISOString();
+  } else if (period === 'month') {
+    const d = new Date(now); d.setDate(d.getDate() - 30); since = d.toISOString();
+  } else {
+    since = '2000-01-01T00:00:00.000Z';
+  }
+
+  const sales = stockLog.filter(e => e.type === 'sell' && e.ts >= since);
+
+  const totalRev   = sales.reduce((s, e) => {
+    const item = inv.find(i => i.id === e.itemId);
+    return s + ((e.price || item?.price || 0) * e.qty);
+  }, 0);
+  const totalUnits = sales.reduce((s, e) => s + e.qty, 0);
+  const totalTxn   = sales.length;
+  const avgPerTxn  = totalTxn ? totalRev / totalTxn : 0;
+
+  // by item
+  const byItem = {};
+  sales.forEach(e => {
+    const item = inv.find(i => i.id === e.itemId);
+    const price = e.price || item?.price || 0;
+    if (!byItem[e.itemName]) byItem[e.itemName] = { units: 0, rev: 0, txn: 0, unit: e.unit, cat: item?.category || 'other' };
+    byItem[e.itemName].units += e.qty;
+    byItem[e.itemName].rev   += price * e.qty;
+    byItem[e.itemName].txn   += 1;
+  });
+
+  const items = Object.entries(byItem)
+    .map(([name, d]) => ({ name, ...d }))
+    .sort((a, b) => b.rev - a.rev);
+
+  // by category
+  const byCat = {};
+  items.forEach(it => {
+    const c = it.cat || 'other';
+    if (!byCat[c]) byCat[c] = { rev: 0, units: 0 };
+    byCat[c].rev   += it.rev;
+    byCat[c].units += it.units;
+  });
+
+  // by day
+  const byDay = {};
+  sales.forEach(e => {
+    const day = e.ts.slice(0, 10);
+    const item = inv.find(i => i.id === e.itemId);
+    const price = e.price || item?.price || 0;
+    if (!byDay[day]) byDay[day] = 0;
+    byDay[day] += price * e.qty;
+  });
+
+  const days = Object.keys(byDay).sort();
+
+  return { sales, totalRev, totalUnits, totalTxn, avgPerTxn, items, byCat, byDay, days, since, period };
+}
+
+function periodLabel(period) {
+  const now = new Date();
+  if (period === 'today')  return 'Today — ' + now.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' });
+  if (period === 'week')   return 'Last 7 Days';
+  if (period === 'month')  return 'Last 30 Days — ' + now.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' });
+  return 'All Time';
+}
+
+function catColor(cat) {
+  const m = { beans:'#c17f3a', dairy:'#1976d2', syrups:'#7b1fa2', supplies:'#2e7d32', equipment:'#e65100', other:'#546e7a' };
+  return m[cat] || '#888';
+}
+
+function miniBarHTML(pct, color) {
+  return `<div class="pr-mini-bar-wrap">
+    <div class="pr-mini-bar-bg">
+      <div class="pr-mini-bar-fill" style="width:${Math.max(2, pct)}%;background:${color || '#c17f3a'};"></div>
+    </div>
+  </div>`;
+}
+
+function sparklineSVG(data, w, h) {
+  if (!data.length) return '';
+  const mn = Math.min(...data), mx = Math.max(...data), rng = mx - mn || 1;
+  const pts = data.map((v, i) => [
+    i / (data.length - 1) * w,
+    h - 6 - ((v - mn) / rng * (h - 12))
+  ]);
+  const line = pts.map((p, i) => (i === 0 ? `M${p[0]},${p[1]}` : `L${p[0]},${p[1]}`)).join(' ');
+  const area = `M${pts[0][0]},${h} ` + pts.map(p => `L${p[0]},${p[1]}`).join(' ') + ` L${pts[pts.length-1][0]},${h} Z`;
+  const last = pts[pts.length - 1];
+  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+    <defs>
+      <linearGradient id="spkgrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#c17f3a" stop-opacity="0.22"/>
+        <stop offset="100%" stop-color="#c17f3a" stop-opacity="0.01"/>
+      </linearGradient>
+    </defs>
+    <path d="${area}" fill="url(#spkgrad)"/>
+    <path d="${line}" fill="none" stroke="#c17f3a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="${last[0]}" cy="${last[1]}" r="3" fill="#c17f3a"/>
+  </svg>`;
+}
+
+function buildPdfHTML(data) {
+  const now  = new Date();
+  const shop = user?.shop || 'GRND Coffee';
+  const name = user?.name || '—';
+  const role = user?.role || 'Staff';
+  const { totalRev, totalUnits, totalTxn, avgPerTxn, items, byCat, byDay, days, period } = data;
+  const maxItemRev = items.length ? items[0].rev : 1;
+  const maxDayRev  = days.length ? Math.max(...days.map(d => byDay[d])) : 1;
+
+  // Sparkline
+  const sparkData = days.map(d => byDay[d]);
+  const spark = sparkData.length > 1 ? sparklineSVG(sparkData, 680, 55) : '<p style="color:#8a8078;font-size:9px;padding:10px 0;">No timeline data available for this period.</p>';
+
+  // Items table rows
+  const itemRows = items.length ? items.slice(0, 15).map((it, i) => {
+    const pct = maxItemRev ? (it.rev / maxItemRev * 100) : 0;
+    return `<tr>
+      <td class="pr-rank">${i + 1}</td>
+      <td class="${i < 3 ? 'pr-top-name' : 'pr-name'}">${esc(it.name)}</td>
+      <td><span class="pr-cat-badge ${it.cat || 'other'}">${cap(it.cat || 'other')}</span></td>
+      <td class="pr-units" style="text-align:right;">${it.units.toLocaleString()} ${esc(it.unit)}</td>
+      <td style="text-align:right;">${miniBarHTML(pct, catColor(it.cat))}</td>
+      <td class="${i === 0 ? 'pr-revenue-top' : 'pr-revenue'}" style="text-align:right;">${peso(it.rev)}</td>
+      <td class="pr-pct" style="text-align:right;">${totalRev ? (it.rev / totalRev * 100).toFixed(1) : 0}%</td>
+      <td class="pr-pct" style="text-align:center;">${it.txn}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="8" style="text-align:center;color:#8a8078;padding:16px 0;font-size:9px;">No sales recorded in this period.</td></tr>`;
+
+  // Totals row
+  const totalRow = items.length ? `<tr>
+    <td></td>
+    <td class="pr-total-label">TOTAL</td>
+    <td></td>
+    <td style="text-align:right;font-weight:700;font-size:9px;">${totalUnits.toLocaleString()}</td>
+    <td></td>
+    <td class="pr-total-val" style="text-align:right;">${peso(totalRev)}</td>
+    <td style="text-align:right;font-weight:700;font-size:8px;">100%</td>
+    <td style="text-align:center;font-weight:700;font-size:9px;">${totalTxn}</td>
+  </tr>` : '';
+
+  // Category bars
+  const sortedCats = Object.entries(byCat).sort((a, b) => b[1].rev - a[1].rev);
+  const maxCatRev  = sortedCats.length ? sortedCats[0][1].rev : 1;
+  const catBarsHTML = sortedCats.length ? sortedCats.map(([cat, d]) => {
+    const pct = (d.rev / maxCatRev * 100).toFixed(1);
+    return `<div class="pr-cat-bar-row">
+      <div class="pr-cat-bar-label">${cap(cat)}</div>
+      <div class="pr-cat-bar-track">
+        <div class="pr-cat-bar-fill" style="width:${pct}%;background:${catColor(cat)};"></div>
+      </div>
+      <div class="pr-cat-bar-val">${peso(d.rev)}</div>
+    </div>`;
+  }).join('') : '<p style="color:#8a8078;font-size:9px;">No category data.</p>';
+
+  // Daily table — split in 2 halves
+  const sortedDays = [...days].sort((a, b) => b.localeCompare(a));
+  const half = Math.ceil(sortedDays.length / 2);
+  const leftDays  = sortedDays.slice(0, half);
+  const rightDays = sortedDays.slice(half);
+  const bestDay   = days.length ? days.reduce((a, b) => byDay[a] > byDay[b] ? a : b) : null;
+
+  function dayRow(d) {
+    const dt = new Date(d + 'T00:00:00');
+    const isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
+    const isBest    = d === bestDay;
+    const pct = maxDayRev ? (byDay[d] / maxDayRev * 100) : 0;
+    const cls = isBest ? 'pr-timeline-best' : isWeekend ? 'pr-timeline-weekend' : '';
+    return `<tr class="${cls}">
+      <td>${dt.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</td>
+      <td style="color:#8a8078;">${dt.toLocaleDateString('en-PH', { weekday: 'short' })}</td>
+      <td style="text-align:right;font-weight:${isBest ? '700' : '400'};color:${isBest ? '#c17f3a' : 'inherit'};">${pesoShort(byDay[d])}</td>
+      <td class="pr-timeline-bar">
+        <div class="pr-timeline-bar-bg">
+          <div class="pr-timeline-bar-fill" style="width:${Math.max(2, pct)}%;background:${isWeekend ? '#e8a84c' : '#c17f3a'};"></div>
+        </div>
+      </td>
+    </tr>`;
+  }
+
+  const dailyLeft  = leftDays.length  ? leftDays.map(dayRow).join('')  : '<tr><td colspan="4" style="color:#8a8078;text-align:center;padding:10px;font-size:9px;">No data</td></tr>';
+  const dailyRight = rightDays.length ? rightDays.map(dayRow).join('') : '';
+
+  const dayTableHead = `<thead><tr>
+    <th>Date</th><th>Day</th><th style="text-align:right;">Revenue</th><th>Trend</th>
+  </tr></thead>`;
+
+  // Insights
+  const topItem = items.length ? items[0] : null;
+  const insights = [];
+  if (totalRev > 0) {
+    insights.push(`Total revenue for the <b>${periodLabel(period)}</b> reached <b>${peso(totalRev)}</b> across ${totalTxn} transactions.`);
+  }
+  if (topItem) {
+    insights.push(`Top revenue item: <b>${esc(topItem.name)}</b> contributed <b>${peso(topItem.rev)}</b> (${totalRev ? (topItem.rev/totalRev*100).toFixed(1) : 0}% of total revenue) with ${topItem.units} units sold.`);
+  }
+  if (bestDay) {
+    const bd = new Date(bestDay + 'T00:00:00');
+    insights.push(`Best single day: <b>${bd.toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric' })}</b> with <b>${pesoShort(byDay[bestDay])}</b> in revenue.`);
+  }
+  if (sortedCats.length) {
+    insights.push(`Top category: <b>${cap(sortedCats[0][0])}</b> led all categories with <b>${peso(sortedCats[0][1].rev)}</b> in revenue.`);
+  }
+  if (avgPerTxn > 0) {
+    insights.push(`Average revenue per transaction was <b>${peso(avgPerTxn)}</b>, with an average of <b>${totalTxn && days.length ? (totalTxn / days.length).toFixed(1) : 0}</b> transactions per day.`);
+  }
+  if (!insights.length) {
+    insights.push('No sales data recorded for this period. Use the stock movement feature to log sales.');
+  }
+
+  const insightsHTML = insights.map((txt, i) => `
+    <div class="pr-insight-item">
+      <span class="pr-insight-num">${i + 1}</span>
+      <span>${txt}</span>
+    </div>`).join('');
+
+  return `<div class="pr-wrap">
+
+    <!-- HEADER -->
+    <div class="pr-header">
+      <div class="pr-brand">
+        <div class="pr-logo-mark">
+          <svg width="18" height="18" viewBox="0 0 28 28" fill="none">
+            <circle cx="14" cy="14" r="13" stroke="#c17f3a" stroke-width="2"/>
+            <path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="#c17f3a" stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="14" cy="14" r="2" fill="#c17f3a"/>
+          </svg>
+        </div>
+        <div>
+          <div class="pr-brand-name">GRND</div>
+          <div class="pr-brand-sub">Coffee Inventory System</div>
+        </div>
+      </div>
+      <div class="pr-report-meta">
+        <div class="pr-report-title">Sales Report</div>
+        <div class="pr-report-period">${periodLabel(period)}</div>
+      </div>
+    </div>
+
+    <!-- INFO BAR -->
+    <div class="pr-infobar">
+      <div class="pr-infobar-item"><div class="pr-infobar-label">Shop</div><div class="pr-infobar-val">${esc(shop)}</div></div>
+      <div class="pr-infobar-item"><div class="pr-infobar-label">Prepared by</div><div class="pr-infobar-val">${esc(name)}</div></div>
+      <div class="pr-infobar-item"><div class="pr-infobar-label">Role</div><div class="pr-infobar-val">${esc(role)}</div></div>
+      <div class="pr-infobar-item"><div class="pr-infobar-label">Generated</div><div class="pr-infobar-val">${now.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}</div></div>
+      <div class="pr-infobar-item"><div class="pr-infobar-label">Period</div><div class="pr-infobar-val">${cap(period)}</div></div>
+    </div>
+
+    <!-- KPI CARDS -->
+    <div class="pr-kpi-row">
+      <div class="pr-kpi">
+        <div class="pr-kpi-label">Total Revenue</div>
+        <div class="pr-kpi-val">${peso(totalRev)}</div>
+        <div class="pr-kpi-sub">from sold items</div>
+      </div>
+      <div class="pr-kpi">
+        <div class="pr-kpi-label">Units Sold</div>
+        <div class="pr-kpi-val blue">${totalUnits.toLocaleString()}</div>
+        <div class="pr-kpi-sub">total quantity</div>
+      </div>
+      <div class="pr-kpi">
+        <div class="pr-kpi-label">Transactions</div>
+        <div class="pr-kpi-val purple">${totalTxn}</div>
+        <div class="pr-kpi-sub">sale movements</div>
+      </div>
+      <div class="pr-kpi">
+        <div class="pr-kpi-label">Avg per Sale</div>
+        <div class="pr-kpi-val green">${peso(avgPerTxn)}</div>
+        <div class="pr-kpi-sub">per transaction</div>
+      </div>
+    </div>
+
+    <!-- REVENUE TREND -->
+    <div class="pr-section-head"><div class="pr-section-head-dot"></div>Revenue Trend</div>
+    <div class="pr-spark-wrap">
+      ${spark}
+      <div class="pr-spark-labels">
+        <span>${days.length ? new Date(days[0]+'T00:00:00').toLocaleDateString('en-PH',{month:'short',day:'numeric'}) : ''}</span>
+        <span style="color:#c17f3a;font-weight:600;">Peak: ${days.length ? pesoShort(Math.max(...days.map(d=>byDay[d]))) : '₱0'}</span>
+        <span>${days.length ? new Date(days[days.length-1]+'T00:00:00').toLocaleDateString('en-PH',{month:'short',day:'numeric'}) : ''}</span>
+      </div>
+    </div>
+
+    <!-- SALES BY ITEM + CATEGORY -->
+    <div style="display:flex;gap:14px;margin-bottom:14px;align-items:flex-start;">
+      <div style="flex:1.6;min-width:0;">
+        <div class="pr-section-head"><div class="pr-section-head-dot"></div>Sales by Item</div>
+        <table class="pr-table">
+          <thead><tr>
+            <th style="width:24px;">#</th>
+            <th>Item Name</th>
+            <th>Category</th>
+            <th style="text-align:right;">Qty Sold</th>
+            <th style="width:75px;">Trend</th>
+            <th style="text-align:right;">Revenue</th>
+            <th style="text-align:right;">Share</th>
+            <th style="text-align:center;">Txn</th>
+          </tr></thead>
+          <tbody>${itemRows}</tbody>
+          <tfoot>${totalRow}</tfoot>
+        </table>
+      </div>
+      <div style="flex:0.85;min-width:140px;">
+        <div class="pr-section-head"><div class="pr-section-head-dot"></div>By Category</div>
+        <div style="background:#fdf9f4;border:1px solid #ddd8cf;border-radius:7px;padding:12px 14px;">
+          ${catBarsHTML}
+        </div>
+      </div>
+    </div>
+
+    <!-- DAILY TABLE -->
+    <div class="pr-section-head"><div class="pr-section-head-dot"></div>Daily Breakdown</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <table class="pr-timeline-table">
+        ${dayTableHead}
+        <tbody>${dailyLeft}</tbody>
+      </table>
+      ${rightDays.length ? `<table class="pr-timeline-table">${dayTableHead}<tbody>${dailyRight}</tbody></table>` : '<div></div>'}
+    </div>
+
+    <!-- INSIGHTS -->
+    <div class="pr-section-head"><div class="pr-section-head-dot"></div>Key Insights</div>
+    <div class="pr-insights">${insightsHTML}</div>
+
+    <!-- FOOTER -->
+    <div class="pr-footer">
+      <div class="pr-footer-left">
+        <div class="pr-confidential">Confidential</div>
+        <div>${esc(name)} · ${esc(role)} · ${esc(shop)}</div>
+      </div>
+      <div>
+        <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
+          <circle cx="14" cy="14" r="13" stroke="#c17f3a" stroke-width="1.5"/>
+          <path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="#c17f3a" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="14" cy="14" r="2" fill="#c17f3a"/>
+        </svg>
+      </div>
+      <div class="pr-footer-right">
+        <div class="pr-footer-brand">GRND</div>
+        <div>Coffee Inventory System</div>
+        <div>Generated ${now.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+      </div>
+    </div>
+
+  </div>`;
+}
+
+function openPdfPreview() {
+  const period = v('sales-period') || 'month';
+  const data   = buildSalesData(period);
+  const html   = buildPdfHTML(data);
+
+  document.getElementById('pdf-paper-content').innerHTML = html;
+  document.getElementById('print-report-root').innerHTML = html;
+  document.getElementById('pdf-preview-subtitle').textContent =
+    `${user?.shop || 'GRND Coffee'} · ${periodLabel(period)}`;
+
+  document.getElementById('pdf-preview-modal').classList.add('show');
+}
+
+function closePdfPreview() {
+  document.getElementById('pdf-preview-modal').classList.remove('show');
+}
+
+function triggerPrint() {
+  // Sync print root
+  const period = v('sales-period') || 'month';
+  const data   = buildSalesData(period);
+  document.getElementById('print-report-root').innerHTML = buildPdfHTML(data);
+  closePdfPreview();
+  setTimeout(() => {
+    window.print();
+  }, 120);
+}
+
+// Close preview on backdrop click
+document.getElementById('pdf-preview-modal').addEventListener('click', function(e) {
+  if (e.target === this) closePdfPreview();
+});
+
+// Escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closePdfPreview();
+});
