@@ -1,33 +1,10 @@
-// ── VERSION / AUTO-CLEAR ──────────────────────────────────
-(function() {
-  const VERSION = 'grnd_v5';
-  if (!localStorage.getItem(VERSION)) {
-    localStorage.clear();
-    localStorage.setItem(VERSION, '1');
-  }
-})();
-
-// ── STORAGE ──────────────────────────────────────────────
-const K = {
-  USERS: 'grnd_users',
-  SESS:  'grnd_sess',
-  THEME: 'grnd_theme',
-  SEED:  'grnd_seeded',
-  inv:   e => 'grnd_inv_' + e,
-  log:   e => 'grnd_log_' + e,
-};
-
-const db = {
-  users:    () => JSON.parse(localStorage.getItem(K.USERS) || '[]'),
-  setUsers: u  => localStorage.setItem(K.USERS, JSON.stringify(u)),
-  sess:     () => JSON.parse(localStorage.getItem(K.SESS) || 'null'),
-  setSess:  u  => localStorage.setItem(K.SESS, JSON.stringify(u)),
-  clrSess:  ()  => localStorage.removeItem(K.SESS),
-  inv:      e  => JSON.parse(localStorage.getItem(K.inv(e)) || '[]'),
-  setInv:   (e, d) => localStorage.setItem(K.inv(e), JSON.stringify(d)),
-  log:      e  => JSON.parse(localStorage.getItem(K.log(e)) || '[]'),
-  setLog:   (e, d) => localStorage.setItem(K.log(e), JSON.stringify(d)),
-};
+// ── WAIT FOR FIREBASE ─────────────────────────────────────
+function waitForFirebase(cb) {
+  if (window._firebase) return cb(window._firebase);
+  const t = setInterval(() => {
+    if (window._firebase) { clearInterval(t); cb(window._firebase); }
+  }, 50);
+}
 
 // ── ROLE ACCESS CONTROL ───────────────────────────────────
 const ROLE_ACCESS = {
@@ -72,10 +49,70 @@ const SEED_INVENTORY = [
   { name:'Whipping Cream',         category:'dairy',     unit:'mL',     quantity:3000,threshold:500,price:0.12, notes:'For drinks & desserts' },
 ];
 
-function seedInventory(email) {
+// ── STATE ─────────────────────────────────────────────────
+let user = null, inv = [], stockLog = [];
+let editId = null, delId = null, moveItemId = null;
+let sKey = 'name', sAsc = true;
+let currentTab = 'inventory';
+let bannerDismissed = false;
+let _fb = null; // Firebase references
+
+// ── FIREBASE HELPERS ──────────────────────────────────────
+function userDocRef(uid) {
+  return _fb.doc(_fb.db, 'users', uid);
+}
+function invColRef(uid) {
+  return _fb.collection(_fb.db, 'users', uid, 'inventory');
+}
+function logColRef(uid) {
+  return _fb.collection(_fb.db, 'users', uid, 'stockLog');
+}
+
+async function fbGetUser(uid) {
+  const snap = await _fb.getDoc(userDocRef(uid));
+  return snap.exists() ? snap.data() : null;
+}
+
+async function fbSetUser(uid, data) {
+  await _fb.setDoc(userDocRef(uid), data, { merge: true });
+}
+
+async function fbGetInv(uid) {
+  const snap = await _fb.getDocs(invColRef(uid));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function fbSaveInvItem(uid, item) {
+  const { id, ...data } = item;
+  await _fb.setDoc(_fb.doc(_fb.db, 'users', uid, 'inventory', id), data);
+}
+
+async function fbDeleteInvItem(uid, itemId) {
+  const { deleteDoc } = await import('https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js');
+  await deleteDoc(_fb.doc(_fb.db, 'users', uid, 'inventory', itemId));
+}
+
+async function fbGetLog(uid) {
+  const q = _fb.query(logColRef(uid), _fb.orderBy('ts', 'desc'), _fb.limit(500));
+  const snap = await _fb.getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function fbAddLog(uid, entry) {
+  const { id, ...data } = entry;
+  await _fb.setDoc(_fb.doc(_fb.db, 'users', uid, 'stockLog', id), data);
+}
+
+async function fbGetAllUsers() {
+  const snap = await _fb.getDocs(_fb.collection(_fb.db, 'users'));
+  return snap.docs.map(d => d.data());
+}
+
+// ── SEED INVENTORY TO FIRESTORE ───────────────────────────
+async function seedInventoryToFirestore(uid) {
   const now = new Date();
   const items = SEED_INVENTORY.map((s, i) => ({
-    id:        uid(),
+    id: uid_gen(),
     createdAt: new Date(now - (SEED_INVENTORY.length - i) * 3600000).toISOString(),
     updatedAt: new Date(now - (SEED_INVENTORY.length - i) * 3600000).toISOString(),
     ...s,
@@ -94,41 +131,43 @@ function seedInventory(email) {
       const qty  = 1 + Math.floor(Math.random() * 5);
       const ts   = new Date(dayBase.getTime() + t * 3600000 * 2).toISOString();
       logs.push({
-        id:       uid(),
-        itemId:   item.id,
-        itemName: item.name,
-        type,
-        qty,
-        prevQty:  item.quantity,
-        newQty:   Math.max(0, item.quantity + (type === 'add' ? qty : -qty)),
-        unit:     item.unit,
-        note:     notes[Math.floor(Math.random() * notes.length)],
-        price:    item.price,
-        ts,
+        id: uid_gen(), itemId: item.id, itemName: item.name,
+        type, qty, prevQty: item.quantity,
+        newQty: Math.max(0, item.quantity + (type === 'add' ? qty : -qty)),
+        unit: item.unit, note: notes[Math.floor(Math.random() * notes.length)],
+        price: item.price, ts,
       });
     }
   }
 
-  db.setInv(email, items);
-  db.setLog(email, logs.reverse());
-}
+  // Write items in batches of 500
+  const batch = _fb.writeBatch(_fb.db);
+  items.forEach(item => {
+    const { id, ...data } = item;
+    batch.set(_fb.doc(_fb.db, 'users', uid, 'inventory', id), data);
+  });
+  await batch.commit();
 
-// ── STATE ─────────────────────────────────────────────────
-let user = null, inv = [], stockLog = [];
-let editId = null, delId = null, moveItemId = null;
-let sKey = 'name', sAsc = true;
-let currentTab = 'inventory';
-let bannerDismissed = false;
+  // Write logs
+  const logBatch = _fb.writeBatch(_fb.db);
+  logs.forEach(entry => {
+    const { id, ...data } = entry;
+    logBatch.set(_fb.doc(_fb.db, 'users', uid, 'stockLog', id), data);
+  });
+  await logBatch.commit();
+
+  return { items, logs: logs.reverse() };
+}
 
 // ── THEME ─────────────────────────────────────────────────
 function initTheme() {
-  const saved = localStorage.getItem(K.THEME) || 'light';
+  const saved = localStorage.getItem('oxis_theme') || 'light';
   applyTheme(saved);
 }
 
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem(K.THEME, theme);
+  localStorage.setItem('oxis_theme', theme);
   const moon = document.getElementById('icon-moon');
   const sun  = document.getElementById('icon-sun');
   if (moon) moon.style.display = theme === 'dark' ? 'none' : '';
@@ -153,16 +192,25 @@ function showErr(id, msg) {
   el.classList.add('show');
 }
 
-function doLogin() {
+async function doLogin() {
   const email = v('li-email').trim(), pass = v('li-pass');
   if (!email || !pass) return showErr('login-err', 'Please fill in all fields.');
-  const found = db.users().find(u => u.email === email && u.password === pass);
-  if (!found) return showErr('login-err', 'Invalid email or password.');
-  db.setSess(found);
-  launch(found);
+  try {
+    const cred = await _fb.signInWithEmailAndPassword(_fb.auth, email, pass);
+    // onAuthStateChanged will handle the rest
+  } catch (err) {
+    const msgs = {
+      'auth/user-not-found': 'No account found with this email.',
+      'auth/wrong-password': 'Incorrect password.',
+      'auth/invalid-email': 'Invalid email address.',
+      'auth/too-many-requests': 'Too many attempts. Please try again later.',
+      'auth/invalid-credential': 'Invalid email or password.',
+    };
+    showErr('login-err', msgs[err.code] || 'Sign in failed. Please try again.');
+  }
 }
 
-function doSignup() {
+async function doSignup() {
   const name  = v('su-name').trim();
   const shop  = v('su-shop').trim();
   const email = v('su-email').trim();
@@ -178,46 +226,91 @@ function doSignup() {
   if (pass !== conf)   return showErr('su-err', 'Passwords do not match.');
   if (!tos)            return showErr('su-err', 'You must agree to the Terms & Conditions.');
 
-  const users = db.users();
-  if (users.find(u => u.email === email)) return showErr('su-err', 'Email already registered.');
+  try {
+    const cred = await _fb.createUserWithEmailAndPassword(_fb.auth, email, pass);
+    await _fb.updateProfile(cred.user, { displayName: name });
 
-  const u = { name, shop, email, phone, role, password: pass, createdAt: new Date().toISOString() };
-  users.push(u);
-  db.setUsers(users);
-  db.setSess(u);
-  seedInventory(email);
-  launch(u);
+    const userData = {
+      name, shop, email, phone, role,
+      uid: cred.user.uid,
+      createdAt: new Date().toISOString(),
+      seeded: false,
+    };
+
+    await fbSetUser(cred.user.uid, userData);
+    // onAuthStateChanged will handle launch + seeding
+  } catch (err) {
+    const msgs = {
+      'auth/email-already-in-use': 'This email is already registered.',
+      'auth/invalid-email': 'Invalid email address.',
+      'auth/weak-password': 'Password is too weak (min 6 characters).',
+    };
+    showErr('su-err', msgs[err.code] || 'Sign up failed. Please try again.');
+  }
 }
 
-function doLogout() {
-  db.clrSess();
+async function doLogout() {
+  await _fb.signOut(_fb.auth);
   user = null; inv = []; stockLog = [];
   document.getElementById('app-wrapper').style.display = 'none';
   document.getElementById('auth-wrapper').style.display = 'flex';
   showPanel('login');
 }
 
-function launch(u) {
-  user     = u;
-  inv      = db.inv(u.email);
-  stockLog = db.log(u.email);
+async function launch(firebaseUser) {
+  try {
+    showLoader(true);
+    let userData = await fbGetUser(firebaseUser.uid);
 
-  if (!inv.length) {
-    seedInventory(u.email);
-    inv      = db.inv(u.email);
-    stockLog = db.log(u.email);
+    if (!userData) {
+      // New user via Google or edge case — create profile
+      userData = {
+        name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+        shop: 'My Coffee Shop',
+        email: firebaseUser.email,
+        phone: '',
+        role: 'Owner',
+        uid: firebaseUser.uid,
+        createdAt: new Date().toISOString(),
+        seeded: false,
+      };
+      await fbSetUser(firebaseUser.uid, userData);
+    }
+
+    user = userData;
+    inv  = await fbGetInv(firebaseUser.uid);
+
+    if (!inv.length && !userData.seeded) {
+      toast('Setting up your inventory…', 'info');
+      const seeded = await seedInventoryToFirestore(firebaseUser.uid);
+      inv      = seeded.items;
+      stockLog = seeded.logs;
+      await fbSetUser(firebaseUser.uid, { seeded: true });
+    } else {
+      stockLog = await fbGetLog(firebaseUser.uid);
+    }
+
+    document.getElementById('auth-wrapper').style.display = 'none';
+    document.getElementById('app-wrapper').style.display  = 'block';
+    document.getElementById('hdr-name').textContent   = user.name.split(' ')[0];
+    document.getElementById('hdr-shop').textContent   = user.shop;
+    document.getElementById('hdr-avatar').textContent = user.name.charAt(0).toUpperCase();
+
+    setupNavForRole();
+    bannerDismissed = false;
+    switchTab('inventory');
+    render();
+  } catch (err) {
+    console.error('Launch error:', err);
+    toast('Error loading data. Please refresh.', 'danger');
+  } finally {
+    showLoader(false);
   }
+}
 
-  document.getElementById('auth-wrapper').style.display = 'none';
-  document.getElementById('app-wrapper').style.display  = 'block';
-  document.getElementById('hdr-name').textContent   = u.name.split(' ')[0];
-  document.getElementById('hdr-shop').textContent   = u.shop;
-  document.getElementById('hdr-avatar').textContent = u.name.charAt(0).toUpperCase();
-
-  setupNavForRole();
-  bannerDismissed = false;
-  switchTab('inventory');
-  render();
+function showLoader(visible) {
+  const el = document.getElementById('fb-loading');
+  if (el) el.style.display = visible ? 'flex' : 'none';
 }
 
 // ── ROLE-BASED NAV ────────────────────────────────────────
@@ -259,8 +352,8 @@ function render() {
     return sAsc ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
   });
 
-  const tbody = document.getElementById('inv-tbody');
-  const empty = document.getElementById('empty-st');
+  const tbody  = document.getElementById('inv-tbody');
+  const empty  = document.getElementById('empty-st');
   const addBtn = document.getElementById('btn-add-item');
   if (addBtn) addBtn.style.display = perm('canAdd') ? '' : 'none';
 
@@ -323,9 +416,7 @@ function updateAlertBanner() {
   const low = inv.filter(i => i.quantity > 0 && i.quantity <= (i.threshold||5));
   const banner = document.getElementById('alert-banner');
   const text   = document.getElementById('alert-text');
-
   if (!out.length && !low.length) { banner.style.display = 'none'; return; }
-
   const parts = [];
   if (out.length) parts.push(`${out.length} item${out.length > 1 ? 's are' : ' is'} out of stock`);
   if (low.length) parts.push(`${low.length} item${low.length > 1 ? 's are' : ' is'} running low`);
@@ -402,9 +493,8 @@ function openMove(id) {
   moveItemId = id;
   const it = inv.find(i => i.id === id);
   if (!it) return;
-
-  document.getElementById('move-item-name').textContent    = it.name;
-  document.getElementById('move-current-qty').textContent  = `Current stock: ${it.quantity} ${it.unit}`;
+  document.getElementById('move-item-name').textContent   = it.name;
+  document.getElementById('move-current-qty').textContent = `Current stock: ${it.quantity} ${it.unit}`;
   const radios = document.querySelectorAll('input[name="move-type"]');
   radios.forEach(r => { r.checked = r.value === 'add'; });
   set('move-qty', '');
@@ -421,17 +511,14 @@ function getMoveType() {
 function updateMovePreview(it) {
   if (!it) it = inv.find(i => i.id === moveItemId);
   if (!it) return;
-
   const type = getMoveType();
   const qty  = parseFloat(v('move-qty')) || 0;
   let newQty = it.quantity;
-
   if (type === 'add')    newQty = it.quantity + qty;
   if (type === 'sell')   newQty = it.quantity - qty;
   if (type === 'use')    newQty = it.quantity - qty;
   if (type === 'remove') newQty = it.quantity - qty;
   if (newQty < 0) newQty = 0;
-
   const preview = document.getElementById('move-preview');
   const cls = newQty <= 0 ? 'stock-out' : newQty <= (it.threshold||5) ? 'stock-low' : 'stock-ok';
   const dot = `<span class="${cls}"><span class="status-dot" style="font-weight:700;">${newQty} ${esc(it.unit)}</span></span>`;
@@ -443,14 +530,12 @@ function closeMove() {
   moveItemId = null;
 }
 
-function confirmMove() {
+async function confirmMove() {
   const it = inv.find(i => i.id === moveItemId);
   if (!it) return;
-
   const type = getMoveType();
   const qty  = parseFloat(v('move-qty'));
   const note = v('move-note').trim();
-
   if (isNaN(qty) || qty <= 0) return toast('Enter a valid quantity.', 'danger');
 
   const prevQty = it.quantity;
@@ -458,11 +543,10 @@ function confirmMove() {
   if (type === 'sell')   it.quantity = Math.max(0, prevQty - qty);
   if (type === 'use')    it.quantity = Math.max(0, prevQty - qty);
   if (type === 'remove') it.quantity = Math.max(0, prevQty - qty);
-
   it.updatedAt = new Date().toISOString();
 
   const entry = {
-    id: uid(), itemId: it.id, itemName: it.name,
+    id: uid_gen(), itemId: it.id, itemName: it.name,
     type, qty, prevQty, newQty: it.quantity,
     unit: it.unit, price: it.price || 0, note,
     ts: new Date().toISOString(),
@@ -470,21 +554,24 @@ function confirmMove() {
   stockLog.unshift(entry);
   if (stockLog.length > 500) stockLog = stockLog.slice(0, 500);
 
-  db.setInv(user.email, inv);
-  db.setLog(user.email, stockLog);
-
   closeMove();
-  bannerDismissed = false;
   render();
 
+  // Persist to Firestore in background
+  try {
+    await fbSaveInvItem(user.uid, it);
+    await fbAddLog(user.uid, entry);
+  } catch (err) {
+    console.error('Firestore write error:', err);
+    toast('Saved locally — sync error. Check connection.', 'warn');
+  }
+
+  bannerDismissed = false;
   const typeLabel = { add:'added to', sell:'sold from', use:'used from', remove:'removed from' }[type];
   toast(`${qty} ${it.unit} ${typeLabel} ${it.name}`, type === 'add' ? 'success' : 'info');
 
-  if (it.quantity <= 0) {
-    setTimeout(() => toast(`${it.name} is now out of stock!`, 'danger'), 400);
-  } else if (it.quantity <= (it.threshold||5)) {
-    setTimeout(() => toast(`${it.name} is running low (${it.quantity} ${it.unit} left)`, 'warn'), 400);
-  }
+  if (it.quantity <= 0) setTimeout(() => toast(`${it.name} is now out of stock!`, 'danger'), 400);
+  else if (it.quantity <= (it.threshold||5)) setTimeout(() => toast(`${it.name} is running low (${it.quantity} ${it.unit} left)`, 'warn'), 400);
 }
 
 // ── ITEM MODAL ────────────────────────────────────────────
@@ -524,7 +611,7 @@ function clearForm() {
   set('f-unit', 'kg');
 }
 
-function saveItem() {
+async function saveItem() {
   const name = v('f-name').trim();
   const cat  = v('f-cat');
   const qty  = parseFloat(v('f-qty'));
@@ -532,9 +619,8 @@ function saveItem() {
   if (!cat)                return toast('Please select a category.', 'danger');
   if (isNaN(qty) || qty < 0) return toast('Enter a valid quantity.', 'danger');
 
-  const isNew = !editId;
   const item = {
-    id:        editId || uid(),
+    id:        editId || uid_gen(),
     name, category: cat,
     unit:      v('f-unit'),
     quantity:  qty,
@@ -544,16 +630,19 @@ function saveItem() {
     updatedAt: new Date().toISOString(),
   };
 
+  let logEntry = null;
+
   if (editId) {
-    const idx = inv.findIndex(i => i.id === editId);
+    const idx  = inv.findIndex(i => i.id === editId);
     const prev = inv[idx];
     if (prev.quantity !== qty) {
-      stockLog.unshift({
-        id: uid(), itemId: item.id, itemName: item.name,
+      logEntry = {
+        id: uid_gen(), itemId: item.id, itemName: item.name,
         type: 'edit', qty: Math.abs(qty - prev.quantity),
         prevQty: prev.quantity, newQty: qty, unit: item.unit,
         price: item.price, note: 'Edited via item form', ts: new Date().toISOString()
-      });
+      };
+      stockLog.unshift(logEntry);
     }
     inv[idx] = { ...prev, ...item };
     toast('Item updated!', 'success');
@@ -561,20 +650,27 @@ function saveItem() {
     item.createdAt = item.updatedAt;
     inv.unshift(item);
     if (qty > 0) {
-      stockLog.unshift({
-        id: uid(), itemId: item.id, itemName: item.name,
+      logEntry = {
+        id: uid_gen(), itemId: item.id, itemName: item.name,
         type: 'add', qty, prevQty: 0, newQty: qty, unit: item.unit,
         price: item.price, note: 'Initial stock', ts: new Date().toISOString()
-      });
+      };
+      stockLog.unshift(logEntry);
     }
     toast('Item added to inventory!', 'success');
   }
 
-  db.setInv(user.email, inv);
-  db.setLog(user.email, stockLog);
   closeModal();
   bannerDismissed = false;
   render();
+
+  // Persist
+  try {
+    await fbSaveInvItem(user.uid, item);
+    if (logEntry) await fbAddLog(user.uid, logEntry);
+  } catch (err) {
+    console.error('Firestore write error:', err);
+  }
 }
 
 // ── DELETE ────────────────────────────────────────────────
@@ -591,32 +687,37 @@ function closeDelModal() {
   delId = null;
 }
 
-function confirmDel() {
+async function confirmDel() {
   if (!delId) return;
   const it = inv.find(i => i.id === delId);
+  let logEntry = null;
   if (it) {
-    stockLog.unshift({
-      id: uid(), itemId: it.id, itemName: it.name,
+    logEntry = {
+      id: uid_gen(), itemId: it.id, itemName: it.name,
       type: 'remove', qty: it.quantity, prevQty: it.quantity, newQty: 0,
       unit: it.unit, price: it.price || 0, note: 'Item deleted', ts: new Date().toISOString()
-    });
-    db.setLog(user.email, stockLog);
+    };
+    stockLog.unshift(logEntry);
   }
   inv = inv.filter(i => i.id !== delId);
-  db.setInv(user.email, inv);
   closeDelModal();
   render();
   toast('Item removed.', 'danger');
+
+  try {
+    await fbDeleteInvItem(user.uid, delId);
+    if (logEntry) await fbAddLog(user.uid, logEntry);
+  } catch (err) {
+    console.error('Firestore delete error:', err);
+  }
 }
 
 // ── SALES REPORT ──────────────────────────────────────────
 function renderSales() {
   if (!perm('sales')) return;
-
   const period = v('sales-period') || 'month';
   const now = new Date();
   let since;
-
   if (period === 'today') {
     since = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   } else if (period === 'week') {
@@ -628,13 +729,7 @@ function renderSales() {
   }
 
   const sales = stockLog.filter(e => e.type === 'sell' && e.ts >= since);
-
-  const totalRev = sales.reduce((s, e) => {
-    const item = inv.find(i => i.id === e.itemId);
-    const price = e.price || item?.price || 0;
-    return s + (price * e.qty);
-  }, 0);
-
+  const totalRev   = sales.reduce((s, e) => { const item = inv.find(i => i.id === e.itemId); return s + ((e.price || item?.price || 0) * e.qty); }, 0);
   const totalUnits = sales.reduce((s, e) => s + e.qty, 0);
   const avgPerSale = sales.length ? totalRev / sales.length : 0;
 
@@ -645,18 +740,15 @@ function renderSales() {
 
   const byItem = {};
   sales.forEach(e => {
-    const item = inv.find(i => i.id === e.itemId);
+    const item  = inv.find(i => i.id === e.itemId);
     const price = e.price || item?.price || 0;
-    const rev = price * e.qty;
     if (!byItem[e.itemName]) byItem[e.itemName] = { units: 0, rev: 0 };
     byItem[e.itemName].units += e.qty;
-    byItem[e.itemName].rev   += rev;
+    byItem[e.itemName].rev   += price * e.qty;
   });
-
   const sortedItems = Object.entries(byItem).sort((a, b) => b[1].rev - a[1].rev);
   const maxRev = sortedItems.length ? sortedItems[0][1].rev : 1;
   const itemsEl = document.getElementById('sales-by-item');
-
   if (!sortedItems.length) {
     itemsEl.innerHTML = '<p class="report-empty">No sales recorded in this period.</p>';
   } else {
@@ -670,8 +762,7 @@ function renderSales() {
           <div class="sales-bar-fill" style="width:${(data.rev/maxRev*100).toFixed(1)}%;"></div>
         </div>
         <div class="sales-item-rev">₱${data.rev.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
-      </div>`
-    ).join('');
+      </div>`).join('');
   }
 
   const recentEl = document.getElementById('sales-recent');
@@ -679,10 +770,10 @@ function renderSales() {
     recentEl.innerHTML = '<p class="report-empty">No sales recorded in this period.</p>';
   } else {
     recentEl.innerHTML = sales.slice(0, 12).map(e => {
-      const item = inv.find(i => i.id === e.itemId);
+      const item  = inv.find(i => i.id === e.itemId);
       const price = e.price || item?.price || 0;
-      const rev = price * e.qty;
-      const dt = new Date(e.ts).toLocaleString('en-PH', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+      const rev   = price * e.qty;
+      const dt    = new Date(e.ts).toLocaleString('en-PH', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
       return `<div class="sales-txn-row">
         <div class="txn-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
         <div style="flex:1;min-width:0;">
@@ -699,24 +790,22 @@ function renderSales() {
 
   const dayMap = {};
   sales.forEach(e => {
-    const day = e.ts.slice(0, 10);
+    const day  = e.ts.slice(0, 10);
     const item = inv.find(i => i.id === e.itemId);
     const price = e.price || item?.price || 0;
     if (!dayMap[day]) dayMap[day] = 0;
     dayMap[day] += price * e.qty;
   });
-
-  const days = Object.keys(dayMap).sort();
+  const days   = Object.keys(dayMap).sort();
   const maxDay = days.length ? Math.max(...days.map(d => dayMap[d])) : 1;
   const timelineEl = document.getElementById('sales-timeline');
-
   if (!days.length) {
     timelineEl.innerHTML = '<p class="report-empty">No sales data to display.</p>';
   } else {
     timelineEl.innerHTML = days.reverse().slice(0, 14).map(day => {
-      const d = new Date(day + 'T00:00:00');
+      const d     = new Date(day + 'T00:00:00');
       const label = d.toLocaleDateString('en-PH', { month:'short', day:'numeric' });
-      const val = dayMap[day];
+      const val   = dayMap[day];
       return `<div class="timeline-row">
         <div class="timeline-date">${label}</div>
         <div class="timeline-bar-track"><div class="timeline-bar-fill" style="width:${(val/maxDay*100).toFixed(1)}%;"></div></div>
@@ -729,12 +818,10 @@ function renderSales() {
 // ── REPORTS ───────────────────────────────────────────────
 function renderReports() {
   if (!perm('reports')) return;
-
   const out = inv.filter(i => i.quantity <= 0);
   const low = inv.filter(i => i.quantity > 0 && i.quantity <= (i.threshold||5));
   const ok  = inv.filter(i => i.quantity > (i.threshold||5));
   const val = inv.reduce((s,i) => s + (+i.price||0)*(+i.quantity||0), 0);
-
   document.getElementById('rpt-ok').textContent  = ok.length;
   document.getElementById('rpt-low').textContent = low.length;
   document.getElementById('rpt-out').textContent = out.length;
@@ -744,7 +831,6 @@ function renderReports() {
   const catCounts = {};
   cats.forEach(c => catCounts[c] = inv.filter(i => i.category === c).length);
   const maxCount = Math.max(...Object.values(catCounts), 1);
-
   document.getElementById('cat-bars').innerHTML = cats
     .filter(c => catCounts[c] > 0)
     .sort((a,b) => catCounts[b] - catCounts[a])
@@ -753,8 +839,7 @@ function renderReports() {
         <div class="cat-bar-label">${cap(c)}</div>
         <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${(catCounts[c]/maxCount*100).toFixed(1)}%;"></div></div>
         <div class="cat-bar-count">${catCounts[c]}</div>
-      </div>`
-    ).join('') || '<p class="report-empty">No items yet.</p>';
+      </div>`).join('') || '<p class="report-empty">No items yet.</p>';
 
   const critical = [...out, ...low].sort((a,b) => a.quantity - b.quantity);
   const attEl = document.getElementById('attention-list');
@@ -767,8 +852,7 @@ function renderReports() {
             <div class="att-icon ${isOut ? 'out-icon' : 'low-icon'}">
               ${isOut
                 ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" x2="19.07" y1="4.93" y2="19.07"/></svg>`
-                : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>`
-              }
+                : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>`}
             </div>
             <div>
               <div class="att-name">${esc(it.name)}</div>
@@ -787,7 +871,6 @@ function renderReports() {
     .filter(i => i.totalVal > 0)
     .sort((a,b) => b.totalVal - a.totalVal)
     .slice(0, 5);
-
   document.getElementById('top-value-list').innerHTML = !topVal.length
     ? '<p class="report-empty">No items with value yet.</p>'
     : topVal.map((it, idx) => `
@@ -798,10 +881,9 @@ function renderReports() {
             <div class="att-sku">${it.quantity} ${esc(it.unit)} × ₱${(+it.price).toFixed(2)}</div>
           </div>
           <div class="val-amount">₱${it.totalVal.toLocaleString('en-PH',{minimumFractionDigits:0})}</div>
-        </div>`
-      ).join('');
+        </div>`).join('');
 
-  const since = new Date(Date.now() - 30*24*60*60*1000).toISOString();
+  const since  = new Date(Date.now() - 30*24*60*60*1000).toISOString();
   const recent = stockLog.filter(e => e.ts >= since);
   const soldQty  = recent.filter(e => e.type==='sell').reduce((s,e) => s+e.qty, 0);
   const usedQty  = recent.filter(e => e.type==='use').reduce((s,e) => s+e.qty, 0);
@@ -826,7 +908,6 @@ function renderActivity() {
     el.innerHTML = `<div class="empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><p>No stock movements recorded yet.</p></div>`;
     return;
   }
-
   const typeConfig = {
     add:    { svg:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>`, label:'Added',   cls:'act-add' },
     sell:   { svg:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`, label:'Sold',    cls:'act-sell' },
@@ -834,9 +915,8 @@ function renderActivity() {
     remove: { svg:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`, label:'Removed', cls:'act-remove' },
     edit:   { svg:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`, label:'Edited',  cls:'act-edit' },
   };
-
   el.innerHTML = stockLog.slice(0, 120).map(e => {
-    const cfg = typeConfig[e.type] || typeConfig.edit;
+    const cfg  = typeConfig[e.type] || typeConfig.edit;
     const date = new Date(e.ts).toLocaleString('en-PH', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
     const isPos = e.newQty >= e.prevQty;
     const change = isPos ? `+${e.qty}` : `-${e.qty}`;
@@ -855,21 +935,23 @@ function renderActivity() {
 }
 
 // ── ADMIN PANEL ───────────────────────────────────────────
-function renderAdmin() {
+async function renderAdmin() {
   if (!perm('admin')) return;
-
-  const users = db.users();
-  const tbody = document.getElementById('admin-users-tbody');
-  tbody.innerHTML = users.map(u => `
-    <tr>
-      <td style="font-weight:600;">${esc(u.name)}</td>
-      <td style="color:var(--text3);font-size:0.82rem;">${esc(u.email)}</td>
-      <td>${esc(u.shop)}</td>
-      <td><span class="badge badge-${u.role?.toLowerCase() === 'admin' ? 'beans' : u.role?.toLowerCase() === 'owner' ? 'supplies' : 'other'}">${esc(u.role||'—')}</span></td>
-      <td style="color:var(--text3);font-size:0.82rem;">${esc(u.phone||'—')}</td>
-      <td style="color:var(--text3);font-size:0.8rem;">${u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'}) : '—'}</td>
-    </tr>`
-  ).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:2rem;">No users found.</td></tr>';
+  try {
+    const users = await fbGetAllUsers();
+    const tbody = document.getElementById('admin-users-tbody');
+    tbody.innerHTML = users.map(u => `
+      <tr>
+        <td style="font-weight:600;">${esc(u.name)}</td>
+        <td style="color:var(--text3);font-size:0.82rem;">${esc(u.email)}</td>
+        <td>${esc(u.shop)}</td>
+        <td><span class="badge badge-${u.role?.toLowerCase() === 'admin' ? 'beans' : u.role?.toLowerCase() === 'owner' ? 'supplies' : 'other'}">${esc(u.role||'—')}</span></td>
+        <td style="color:var(--text3);font-size:0.82rem;">${esc(u.phone||'—')}</td>
+        <td style="color:var(--text3);font-size:0.8rem;">${u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-PH',{year:'numeric',month:'short',day:'numeric'}) : '—'}</td>
+      </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:2rem;">No users found.</td></tr>';
+  } catch (err) {
+    console.error('Admin fetch error:', err);
+  }
 
   const features = [
     { key:'inventory',  label:'View Inventory' },
@@ -885,7 +967,6 @@ function renderAdmin() {
   const roles = ['Admin','Owner','Manager','Barista','Staff'];
   const checkSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
   const crossSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>`;
-
   const matrixTbody = document.getElementById('role-matrix-tbody');
   matrixTbody.innerHTML = features.map(f => `
     <tr>
@@ -894,8 +975,7 @@ function renderAdmin() {
         const has = ROLE_ACCESS[r][f.key] === true;
         return `<td class="${has ? 'role-check' : 'role-cross'}">${has ? checkSvg : crossSvg}</td>`;
       }).join('')}
-    </tr>`
-  ).join('');
+    </tr>`).join('');
 }
 
 // ── PROFILE ───────────────────────────────────────────────
@@ -920,22 +1000,25 @@ function openProfile() {
 
 function closeProfile() { document.getElementById('profile-modal').classList.remove('show'); }
 
-function saveProfile() {
+async function saveProfile() {
   const name = v('pe-name').trim(), shop = v('pe-shop').trim();
   const phone = v('pe-phone').trim(), role = v('pe-role');
   if (!name) return toast('Name cannot be empty.', 'danger');
   if (!shop) return toast('Shop name cannot be empty.', 'danger');
   user.name = name; user.shop = shop; user.phone = phone; user.role = role;
-  const users = db.users();
-  const idx = users.findIndex(u => u.email === user.email);
-  if (idx !== -1) users[idx] = { ...users[idx], name, shop, phone, role };
-  db.setUsers(users); db.setSess(user);
+
   document.getElementById('hdr-name').textContent   = name.split(' ')[0];
   document.getElementById('hdr-shop').textContent   = shop;
   document.getElementById('hdr-avatar').textContent = name.charAt(0).toUpperCase();
   setupNavForRole();
   closeProfile();
   toast('Profile updated!', 'success');
+
+  try {
+    await fbSetUser(user.uid, { name, shop, phone, role });
+  } catch (err) {
+    console.error('Profile save error:', err);
+  }
 }
 
 // ── TOS ───────────────────────────────────────────────────
@@ -960,7 +1043,7 @@ function toast(msg, type) {
 }
 
 // ── HELPERS ───────────────────────────────────────────────
-function uid()           { return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+function uid_gen()       { return Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
 function v(id)           { return document.getElementById(id)?.value ?? ''; }
 function set(id, val='') { const el = document.getElementById(id); if (el) el.value = val; }
 function esc(s)          { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -991,27 +1074,15 @@ document.addEventListener('keydown', e => {
 // ── ESCAPE KEY ────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  closeModal(); closeDelModal(); closeProfile(); closeTOS(); closeMove();
+  closeModal(); closeDelModal(); closeProfile(); closeTOS(); closeMove(); closePdfPreview();
 });
-
-// ── INIT ──────────────────────────────────────────────────
-(function() {
-  initTheme();
-  const s = db.sess();
-  if (s) launch(s);
-})();
 
 // ═══════════════════════════════════════════════════════════
 // ── PDF / PRINT EXPORT ─────────────────────────────────────
 // ═══════════════════════════════════════════════════════════
 
-function peso(v) {
-  return '₱' + (+v || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function pesoShort(v) {
-  return '₱' + (+v || 0).toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-}
+function peso(v)      { return '₱' + (+v || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function pesoShort(v) { return '₱' + (+v || 0).toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
 
 function buildSalesData(period) {
   const now = new Date();
@@ -1025,33 +1096,21 @@ function buildSalesData(period) {
   } else {
     since = '2000-01-01T00:00:00.000Z';
   }
-
-  const sales = stockLog.filter(e => e.type === 'sell' && e.ts >= since);
-
-  const totalRev   = sales.reduce((s, e) => {
-    const item = inv.find(i => i.id === e.itemId);
-    return s + ((e.price || item?.price || 0) * e.qty);
-  }, 0);
+  const sales      = stockLog.filter(e => e.type === 'sell' && e.ts >= since);
+  const totalRev   = sales.reduce((s, e) => { const item = inv.find(i => i.id === e.itemId); return s + ((e.price || item?.price || 0) * e.qty); }, 0);
   const totalUnits = sales.reduce((s, e) => s + e.qty, 0);
   const totalTxn   = sales.length;
   const avgPerTxn  = totalTxn ? totalRev / totalTxn : 0;
-
-  // by item
   const byItem = {};
   sales.forEach(e => {
-    const item = inv.find(i => i.id === e.itemId);
+    const item  = inv.find(i => i.id === e.itemId);
     const price = e.price || item?.price || 0;
     if (!byItem[e.itemName]) byItem[e.itemName] = { units: 0, rev: 0, txn: 0, unit: e.unit, cat: item?.category || 'other' };
     byItem[e.itemName].units += e.qty;
     byItem[e.itemName].rev   += price * e.qty;
     byItem[e.itemName].txn   += 1;
   });
-
-  const items = Object.entries(byItem)
-    .map(([name, d]) => ({ name, ...d }))
-    .sort((a, b) => b.rev - a.rev);
-
-  // by category
+  const items = Object.entries(byItem).map(([name, d]) => ({ name, ...d })).sort((a, b) => b.rev - a.rev);
   const byCat = {};
   items.forEach(it => {
     const c = it.cat || 'other';
@@ -1059,8 +1118,6 @@ function buildSalesData(period) {
     byCat[c].rev   += it.rev;
     byCat[c].units += it.units;
   });
-
-  // by day
   const byDay = {};
   sales.forEach(e => {
     const day = e.ts.slice(0, 10);
@@ -1069,9 +1126,7 @@ function buildSalesData(period) {
     if (!byDay[day]) byDay[day] = 0;
     byDay[day] += price * e.qty;
   });
-
   const days = Object.keys(byDay).sort();
-
   return { sales, totalRev, totalUnits, totalTxn, avgPerTxn, items, byCat, byDay, days, since, period };
 }
 
@@ -1089,30 +1144,18 @@ function catColor(cat) {
 }
 
 function miniBarHTML(pct, color) {
-  return `<div class="pr-mini-bar-wrap">
-    <div class="pr-mini-bar-bg">
-      <div class="pr-mini-bar-fill" style="width:${Math.max(2, pct)}%;background:${color || '#c17f3a'};"></div>
-    </div>
-  </div>`;
+  return `<div class="pr-mini-bar-wrap"><div class="pr-mini-bar-bg"><div class="pr-mini-bar-fill" style="width:${Math.max(2, pct)}%;background:${color || '#c17f3a'};"></div></div></div>`;
 }
 
 function sparklineSVG(data, w, h) {
   if (!data.length) return '';
   const mn = Math.min(...data), mx = Math.max(...data), rng = mx - mn || 1;
-  const pts = data.map((v, i) => [
-    i / (data.length - 1) * w,
-    h - 6 - ((v - mn) / rng * (h - 12))
-  ]);
+  const pts = data.map((v, i) => [i / (data.length - 1) * w, h - 6 - ((v - mn) / rng * (h - 12))]);
   const line = pts.map((p, i) => (i === 0 ? `M${p[0]},${p[1]}` : `L${p[0]},${p[1]}`)).join(' ');
   const area = `M${pts[0][0]},${h} ` + pts.map(p => `L${p[0]},${p[1]}`).join(' ') + ` L${pts[pts.length-1][0]},${h} Z`;
   const last = pts[pts.length - 1];
   return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg" style="display:block;">
-    <defs>
-      <linearGradient id="spkgrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#c17f3a" stop-opacity="0.22"/>
-        <stop offset="100%" stop-color="#c17f3a" stop-opacity="0.01"/>
-      </linearGradient>
-    </defs>
+    <defs><linearGradient id="spkgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c17f3a" stop-opacity="0.22"/><stop offset="100%" stop-color="#c17f3a" stop-opacity="0.01"/></linearGradient></defs>
     <path d="${area}" fill="url(#spkgrad)"/>
     <path d="${line}" fill="none" stroke="#c17f3a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
     <circle cx="${last[0]}" cy="${last[1]}" r="3" fill="#c17f3a"/>
@@ -1121,18 +1164,14 @@ function sparklineSVG(data, w, h) {
 
 function buildPdfHTML(data) {
   const now  = new Date();
-  const shop = user?.shop || 'GRND Coffee';
+  const shop = user?.shop || 'OXIS Coffee';
   const name = user?.name || '—';
   const role = user?.role || 'Staff';
   const { totalRev, totalUnits, totalTxn, avgPerTxn, items, byCat, byDay, days, period } = data;
   const maxItemRev = items.length ? items[0].rev : 1;
   const maxDayRev  = days.length ? Math.max(...days.map(d => byDay[d])) : 1;
-
-  // Sparkline
   const sparkData = days.map(d => byDay[d]);
   const spark = sparkData.length > 1 ? sparklineSVG(sparkData, 680, 55) : '<p style="color:#8a8078;font-size:9px;padding:10px 0;">No timeline data available for this period.</p>';
-
-  // Items table rows
   const itemRows = items.length ? items.slice(0, 15).map((it, i) => {
     const pct = maxItemRev ? (it.rev / maxItemRev * 100) : 0;
     return `<tr>
@@ -1147,11 +1186,8 @@ function buildPdfHTML(data) {
     </tr>`;
   }).join('') : `<tr><td colspan="8" style="text-align:center;color:#8a8078;padding:16px 0;font-size:9px;">No sales recorded in this period.</td></tr>`;
 
-  // Totals row
   const totalRow = items.length ? `<tr>
-    <td></td>
-    <td class="pr-total-label">TOTAL</td>
-    <td></td>
+    <td></td><td class="pr-total-label">TOTAL</td><td></td>
     <td style="text-align:right;font-weight:700;font-size:9px;">${totalUnits.toLocaleString()}</td>
     <td></td>
     <td class="pr-total-val" style="text-align:right;">${peso(totalRev)}</td>
@@ -1159,27 +1195,22 @@ function buildPdfHTML(data) {
     <td style="text-align:center;font-weight:700;font-size:9px;">${totalTxn}</td>
   </tr>` : '';
 
-  // Category bars
   const sortedCats = Object.entries(byCat).sort((a, b) => b[1].rev - a[1].rev);
   const maxCatRev  = sortedCats.length ? sortedCats[0][1].rev : 1;
   const catBarsHTML = sortedCats.length ? sortedCats.map(([cat, d]) => {
     const pct = (d.rev / maxCatRev * 100).toFixed(1);
     return `<div class="pr-cat-bar-row">
       <div class="pr-cat-bar-label">${cap(cat)}</div>
-      <div class="pr-cat-bar-track">
-        <div class="pr-cat-bar-fill" style="width:${pct}%;background:${catColor(cat)};"></div>
-      </div>
+      <div class="pr-cat-bar-track"><div class="pr-cat-bar-fill" style="width:${pct}%;background:${catColor(cat)};"></div></div>
       <div class="pr-cat-bar-val">${peso(d.rev)}</div>
     </div>`;
   }).join('') : '<p style="color:#8a8078;font-size:9px;">No category data.</p>';
 
-  // Daily table — split in 2 halves
   const sortedDays = [...days].sort((a, b) => b.localeCompare(a));
   const half = Math.ceil(sortedDays.length / 2);
   const leftDays  = sortedDays.slice(0, half);
   const rightDays = sortedDays.slice(half);
   const bestDay   = days.length ? days.reduce((a, b) => byDay[a] > byDay[b] ? a : b) : null;
-
   function dayRow(d) {
     const dt = new Date(d + 'T00:00:00');
     const isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
@@ -1190,74 +1221,33 @@ function buildPdfHTML(data) {
       <td>${dt.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</td>
       <td style="color:#8a8078;">${dt.toLocaleDateString('en-PH', { weekday: 'short' })}</td>
       <td style="text-align:right;font-weight:${isBest ? '700' : '400'};color:${isBest ? '#c17f3a' : 'inherit'};">${pesoShort(byDay[d])}</td>
-      <td class="pr-timeline-bar">
-        <div class="pr-timeline-bar-bg">
-          <div class="pr-timeline-bar-fill" style="width:${Math.max(2, pct)}%;background:${isWeekend ? '#e8a84c' : '#c17f3a'};"></div>
-        </div>
-      </td>
+      <td class="pr-timeline-bar"><div class="pr-timeline-bar-bg"><div class="pr-timeline-bar-fill" style="width:${Math.max(2, pct)}%;background:${isWeekend ? '#e8a84c' : '#c17f3a'};"></div></div></td>
     </tr>`;
   }
-
   const dailyLeft  = leftDays.length  ? leftDays.map(dayRow).join('')  : '<tr><td colspan="4" style="color:#8a8078;text-align:center;padding:10px;font-size:9px;">No data</td></tr>';
   const dailyRight = rightDays.length ? rightDays.map(dayRow).join('') : '';
+  const dayTableHead = `<thead><tr><th>Date</th><th>Day</th><th style="text-align:right;">Revenue</th><th>Trend</th></tr></thead>`;
 
-  const dayTableHead = `<thead><tr>
-    <th>Date</th><th>Day</th><th style="text-align:right;">Revenue</th><th>Trend</th>
-  </tr></thead>`;
-
-  // Insights
   const topItem = items.length ? items[0] : null;
   const insights = [];
-  if (totalRev > 0) {
-    insights.push(`Total revenue for the <b>${periodLabel(period)}</b> reached <b>${peso(totalRev)}</b> across ${totalTxn} transactions.`);
-  }
-  if (topItem) {
-    insights.push(`Top revenue item: <b>${esc(topItem.name)}</b> contributed <b>${peso(topItem.rev)}</b> (${totalRev ? (topItem.rev/totalRev*100).toFixed(1) : 0}% of total revenue) with ${topItem.units} units sold.`);
-  }
-  if (bestDay) {
-    const bd = new Date(bestDay + 'T00:00:00');
-    insights.push(`Best single day: <b>${bd.toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric' })}</b> with <b>${pesoShort(byDay[bestDay])}</b> in revenue.`);
-  }
-  if (sortedCats.length) {
-    insights.push(`Top category: <b>${cap(sortedCats[0][0])}</b> led all categories with <b>${peso(sortedCats[0][1].rev)}</b> in revenue.`);
-  }
-  if (avgPerTxn > 0) {
-    insights.push(`Average revenue per transaction was <b>${peso(avgPerTxn)}</b>, with an average of <b>${totalTxn && days.length ? (totalTxn / days.length).toFixed(1) : 0}</b> transactions per day.`);
-  }
-  if (!insights.length) {
-    insights.push('No sales data recorded for this period. Use the stock movement feature to log sales.');
-  }
-
-  const insightsHTML = insights.map((txt, i) => `
-    <div class="pr-insight-item">
-      <span class="pr-insight-num">${i + 1}</span>
-      <span>${txt}</span>
-    </div>`).join('');
+  if (totalRev > 0) insights.push(`Total revenue for the <b>${periodLabel(period)}</b> reached <b>${peso(totalRev)}</b> across ${totalTxn} transactions.`);
+  if (topItem) insights.push(`Top revenue item: <b>${esc(topItem.name)}</b> contributed <b>${peso(topItem.rev)}</b> (${totalRev ? (topItem.rev/totalRev*100).toFixed(1) : 0}% of total revenue) with ${topItem.units} units sold.`);
+  if (bestDay) { const bd = new Date(bestDay + 'T00:00:00'); insights.push(`Best single day: <b>${bd.toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric' })}</b> with <b>${pesoShort(byDay[bestDay])}</b> in revenue.`); }
+  if (sortedCats.length) insights.push(`Top category: <b>${cap(sortedCats[0][0])}</b> led all categories with <b>${peso(sortedCats[0][1].rev)}</b> in revenue.`);
+  if (avgPerTxn > 0) insights.push(`Average revenue per transaction was <b>${peso(avgPerTxn)}</b>, with an average of <b>${totalTxn && days.length ? (totalTxn / days.length).toFixed(1) : 0}</b> transactions per day.`);
+  if (!insights.length) insights.push('No sales data recorded for this period. Use the stock movement feature to log sales.');
+  const insightsHTML = insights.map((txt, i) => `<div class="pr-insight-item"><span class="pr-insight-num">${i + 1}</span><span>${txt}</span></div>`).join('');
 
   return `<div class="pr-wrap">
-
-    <!-- HEADER -->
     <div class="pr-header">
       <div class="pr-brand">
         <div class="pr-logo-mark">
-          <svg width="18" height="18" viewBox="0 0 28 28" fill="none">
-            <circle cx="14" cy="14" r="13" stroke="#c17f3a" stroke-width="2"/>
-            <path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="#c17f3a" stroke-width="1.8" stroke-linecap="round"/>
-            <circle cx="14" cy="14" r="2" fill="#c17f3a"/>
-          </svg>
+          <svg width="18" height="18" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="#c17f3a" stroke-width="2"/><path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="#c17f3a" stroke-width="1.8" stroke-linecap="round"/><circle cx="14" cy="14" r="2" fill="#c17f3a"/></svg>
         </div>
-        <div>
-          <div class="pr-brand-name">GRND</div>
-          <div class="pr-brand-sub">Coffee Inventory System</div>
-        </div>
+        <div><div class="pr-brand-name">OXIS</div><div class="pr-brand-sub">Coffee Inventory System</div></div>
       </div>
-      <div class="pr-report-meta">
-        <div class="pr-report-title">Sales Report</div>
-        <div class="pr-report-period">${periodLabel(period)}</div>
-      </div>
+      <div class="pr-report-meta"><div class="pr-report-title">Sales Report</div><div class="pr-report-period">${periodLabel(period)}</div></div>
     </div>
-
-    <!-- INFO BAR -->
     <div class="pr-infobar">
       <div class="pr-infobar-item"><div class="pr-infobar-label">Shop</div><div class="pr-infobar-val">${esc(shop)}</div></div>
       <div class="pr-infobar-item"><div class="pr-infobar-label">Prepared by</div><div class="pr-infobar-val">${esc(name)}</div></div>
@@ -1265,32 +1255,12 @@ function buildPdfHTML(data) {
       <div class="pr-infobar-item"><div class="pr-infobar-label">Generated</div><div class="pr-infobar-val">${now.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}, ${now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}</div></div>
       <div class="pr-infobar-item"><div class="pr-infobar-label">Period</div><div class="pr-infobar-val">${cap(period)}</div></div>
     </div>
-
-    <!-- KPI CARDS -->
     <div class="pr-kpi-row">
-      <div class="pr-kpi">
-        <div class="pr-kpi-label">Total Revenue</div>
-        <div class="pr-kpi-val">${peso(totalRev)}</div>
-        <div class="pr-kpi-sub">from sold items</div>
-      </div>
-      <div class="pr-kpi">
-        <div class="pr-kpi-label">Units Sold</div>
-        <div class="pr-kpi-val blue">${totalUnits.toLocaleString()}</div>
-        <div class="pr-kpi-sub">total quantity</div>
-      </div>
-      <div class="pr-kpi">
-        <div class="pr-kpi-label">Transactions</div>
-        <div class="pr-kpi-val purple">${totalTxn}</div>
-        <div class="pr-kpi-sub">sale movements</div>
-      </div>
-      <div class="pr-kpi">
-        <div class="pr-kpi-label">Avg per Sale</div>
-        <div class="pr-kpi-val green">${peso(avgPerTxn)}</div>
-        <div class="pr-kpi-sub">per transaction</div>
-      </div>
+      <div class="pr-kpi"><div class="pr-kpi-label">Total Revenue</div><div class="pr-kpi-val">${peso(totalRev)}</div><div class="pr-kpi-sub">from sold items</div></div>
+      <div class="pr-kpi"><div class="pr-kpi-label">Units Sold</div><div class="pr-kpi-val blue">${totalUnits.toLocaleString()}</div><div class="pr-kpi-sub">total quantity</div></div>
+      <div class="pr-kpi"><div class="pr-kpi-label">Transactions</div><div class="pr-kpi-val purple">${totalTxn}</div><div class="pr-kpi-sub">sale movements</div></div>
+      <div class="pr-kpi"><div class="pr-kpi-label">Avg per Sale</div><div class="pr-kpi-val green">${peso(avgPerTxn)}</div><div class="pr-kpi-sub">per transaction</div></div>
     </div>
-
-    <!-- REVENUE TREND -->
     <div class="pr-section-head"><div class="pr-section-head-dot"></div>Revenue Trend</div>
     <div class="pr-spark-wrap">
       ${spark}
@@ -1300,68 +1270,32 @@ function buildPdfHTML(data) {
         <span>${days.length ? new Date(days[days.length-1]+'T00:00:00').toLocaleDateString('en-PH',{month:'short',day:'numeric'}) : ''}</span>
       </div>
     </div>
-
-    <!-- SALES BY ITEM + CATEGORY -->
     <div style="display:flex;gap:14px;margin-bottom:14px;align-items:flex-start;">
       <div style="flex:1.6;min-width:0;">
         <div class="pr-section-head"><div class="pr-section-head-dot"></div>Sales by Item</div>
         <table class="pr-table">
-          <thead><tr>
-            <th style="width:24px;">#</th>
-            <th>Item Name</th>
-            <th>Category</th>
-            <th style="text-align:right;">Qty Sold</th>
-            <th style="width:75px;">Trend</th>
-            <th style="text-align:right;">Revenue</th>
-            <th style="text-align:right;">Share</th>
-            <th style="text-align:center;">Txn</th>
-          </tr></thead>
+          <thead><tr><th style="width:24px;">#</th><th>Item Name</th><th>Category</th><th style="text-align:right;">Qty Sold</th><th style="width:75px;">Trend</th><th style="text-align:right;">Revenue</th><th style="text-align:right;">Share</th><th style="text-align:center;">Txn</th></tr></thead>
           <tbody>${itemRows}</tbody>
           <tfoot>${totalRow}</tfoot>
         </table>
       </div>
       <div style="flex:0.85;min-width:140px;">
         <div class="pr-section-head"><div class="pr-section-head-dot"></div>By Category</div>
-        <div style="background:#fdf9f4;border:1px solid #ddd8cf;border-radius:7px;padding:12px 14px;">
-          ${catBarsHTML}
-        </div>
+        <div style="background:#fdf9f4;border:1px solid #ddd8cf;border-radius:7px;padding:12px 14px;">${catBarsHTML}</div>
       </div>
     </div>
-
-    <!-- DAILY TABLE -->
     <div class="pr-section-head"><div class="pr-section-head-dot"></div>Daily Breakdown</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
-      <table class="pr-timeline-table">
-        ${dayTableHead}
-        <tbody>${dailyLeft}</tbody>
-      </table>
+      <table class="pr-timeline-table">${dayTableHead}<tbody>${dailyLeft}</tbody></table>
       ${rightDays.length ? `<table class="pr-timeline-table">${dayTableHead}<tbody>${dailyRight}</tbody></table>` : '<div></div>'}
     </div>
-
-    <!-- INSIGHTS -->
     <div class="pr-section-head"><div class="pr-section-head-dot"></div>Key Insights</div>
     <div class="pr-insights">${insightsHTML}</div>
-
-    <!-- FOOTER -->
     <div class="pr-footer">
-      <div class="pr-footer-left">
-        <div class="pr-confidential">Confidential</div>
-        <div>${esc(name)} · ${esc(role)} · ${esc(shop)}</div>
-      </div>
-      <div>
-        <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
-          <circle cx="14" cy="14" r="13" stroke="#c17f3a" stroke-width="1.5"/>
-          <path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="#c17f3a" stroke-width="1.5" stroke-linecap="round"/>
-          <circle cx="14" cy="14" r="2" fill="#c17f3a"/>
-        </svg>
-      </div>
-      <div class="pr-footer-right">
-        <div class="pr-footer-brand">GRND</div>
-        <div>Coffee Inventory System</div>
-        <div>Generated ${now.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
-      </div>
+      <div class="pr-footer-left"><div class="pr-confidential">Confidential</div><div>${esc(name)} · ${esc(role)} · ${esc(shop)}</div></div>
+      <div><svg width="22" height="22" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="#c17f3a" stroke-width="1.5"/><path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="#c17f3a" stroke-width="1.5" stroke-linecap="round"/><circle cx="14" cy="14" r="2" fill="#c17f3a"/></svg></div>
+      <div class="pr-footer-right"><div class="pr-footer-brand">OXIS</div><div>Coffee Inventory System</div><div>Generated ${now.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}</div></div>
     </div>
-
   </div>`;
 }
 
@@ -1369,36 +1303,38 @@ function openPdfPreview() {
   const period = v('sales-period') || 'month';
   const data   = buildSalesData(period);
   const html   = buildPdfHTML(data);
-
   document.getElementById('pdf-paper-content').innerHTML = html;
   document.getElementById('print-report-root').innerHTML = html;
-  document.getElementById('pdf-preview-subtitle').textContent =
-    `${user?.shop || 'GRND Coffee'} · ${periodLabel(period)}`;
-
+  document.getElementById('pdf-preview-subtitle').textContent = `${user?.shop || 'OXIS Coffee'} · ${periodLabel(period)}`;
   document.getElementById('pdf-preview-modal').classList.add('show');
 }
 
-function closePdfPreview() {
-  document.getElementById('pdf-preview-modal').classList.remove('show');
-}
+function closePdfPreview() { document.getElementById('pdf-preview-modal').classList.remove('show'); }
 
 function triggerPrint() {
-  // Sync print root
   const period = v('sales-period') || 'month';
   const data   = buildSalesData(period);
   document.getElementById('print-report-root').innerHTML = buildPdfHTML(data);
   closePdfPreview();
-  setTimeout(() => {
-    window.print();
-  }, 120);
+  setTimeout(() => window.print(), 120);
 }
 
-// Close preview on backdrop click
 document.getElementById('pdf-preview-modal').addEventListener('click', function(e) {
   if (e.target === this) closePdfPreview();
 });
 
-// Escape key
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closePdfPreview();
+// ── INIT — Wait for Firebase then set up auth listener ────
+initTheme();
+
+waitForFirebase(fb => {
+  _fb = fb;
+  _fb.onAuthStateChanged(_fb.auth, async (firebaseUser) => {
+    if (firebaseUser) {
+      await launch(firebaseUser);
+    } else {
+      showLoader(false);
+      document.getElementById('auth-wrapper').style.display = 'flex';
+      document.getElementById('app-wrapper').style.display  = 'none';
+    }
+  });
 });
