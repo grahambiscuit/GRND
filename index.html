@@ -3,36 +3,72 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GRND — Coffee Inventory System</title>
+<title>OXIS — Coffee Inventory System</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-analytics.js";
+  import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut,
+    onAuthStateChanged,
+    updateProfile
+  } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+  import {
+    getFirestore,
+    doc,
+    getDoc,
+    setDoc,
+    updateDoc,
+    collection,
+    getDocs,
+    query,
+    where,
+    orderBy,
+    limit,
+    writeBatch,
+    serverTimestamp,
+    Timestamp
+  } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCrivIjKp4fj-IGop_xMO2h8RjQZyok1VI",
+    authDomain: "grnd-2c2f3.firebaseapp.com",
+    projectId: "grnd-2c2f3",
+    storageBucket: "grnd-2c2f3.firebasestorage.app",
+    messagingSenderId: "986943795686",
+    appId: "1:986943795686:web:194c73e1d4f5e46792a627",
+    measurementId: "G-329Q640LML"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // Expose to global scope for app.js
+  window._firebase = { auth, db, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where, orderBy, limit, writeBatch, serverTimestamp, Timestamp };
+</script>
 
 <!-- ═══ PRINT STYLES ══════════════════════════════════════ -->
 <style>
 @media print {
-  /* ── Reset page ── */
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-
-  @page {
-    size: A4 portrait;
-    margin: 14mm 16mm 16mm 16mm;
-  }
-
-  /* Hide everything except the print report */
+  @page { size: A4 portrait; margin: 14mm 16mm 16mm 16mm; }
   body > *:not(#print-report-root) { display: none !important; }
   #print-report-root { display: block !important; }
-
-  /* Basic reset inside report */
   #print-report-root { font-family: 'DM Sans', sans-serif; color: #1a1714; background: #fff; }
-
   .pr-page-break { page-break-before: always; }
   .pr-avoid-break { page-break-inside: avoid; }
 }
 
-/* ── PRINT REPORT ROOT (hidden on screen, shown on print) ── */
 #print-report-root { display: none; }
 
-/* ── PRINT REPORT STYLES (shared screen preview + actual print) ── */
 .pr-wrap {
   font-family: 'DM Sans', sans-serif;
   color: #1a1714;
@@ -45,7 +81,6 @@
   line-height: 1.5;
 }
 
-/* Header */
 .pr-header {
   display: flex;
   align-items: flex-end;
@@ -68,7 +103,6 @@
 .pr-report-title { font-size: 17px; font-weight: 800; color: #1a1714; letter-spacing: -0.01em; }
 .pr-report-period { font-size: 8px; color: #8a8078; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px; }
 
-/* Info bar */
 .pr-infobar {
   display: flex;
   gap: 0;
@@ -78,24 +112,13 @@
   overflow: hidden;
   background: #f9f6f1;
 }
-.pr-infobar-item {
-  flex: 1;
-  padding: 7px 10px;
-  border-right: 1px solid #ddd8cf;
-}
+.pr-infobar-item { flex: 1; padding: 7px 10px; border-right: 1px solid #ddd8cf; }
 .pr-infobar-item:last-child { border-right: none; }
 .pr-infobar-label { font-size: 7px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #8a8078; margin-bottom: 2px; }
 .pr-infobar-val { font-size: 9.5px; font-weight: 600; color: #1a1714; }
 
-/* KPI row */
 .pr-kpi-row { display: flex; gap: 8px; margin-bottom: 14px; }
-.pr-kpi {
-  flex: 1;
-  background: #fdf9f4;
-  border: 1px solid #ddd8cf;
-  border-radius: 7px;
-  padding: 9px 10px;
-}
+.pr-kpi { flex: 1; background: #fdf9f4; border: 1px solid #ddd8cf; border-radius: 7px; padding: 9px 10px; }
 .pr-kpi-label { font-size: 7px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #8a8078; margin-bottom: 4px; }
 .pr-kpi-val { font-size: 18px; font-weight: 800; color: #c17f3a; line-height: 1; letter-spacing: -0.02em; }
 .pr-kpi-sub { font-size: 7.5px; color: #8a8078; margin-top: 3px; }
@@ -103,98 +126,33 @@
 .pr-kpi-val.purple { color: #7b1fa2; }
 .pr-kpi-val.green  { color: #2e7d32; }
 
-/* Section heading */
 .pr-section-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #5a534a;
-  border-bottom: 1px solid #ddd8cf;
-  padding-bottom: 5px;
-  margin-bottom: 10px;
-  margin-top: 14px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: #5a534a; border-bottom: 1px solid #ddd8cf;
+  padding-bottom: 5px; margin-bottom: 10px; margin-top: 14px;
 }
-.pr-section-head-dot {
-  width: 5px; height: 5px;
-  border-radius: 50%;
-  background: #c17f3a;
-  flex-shrink: 0;
-}
+.pr-section-head-dot { width: 5px; height: 5px; border-radius: 50%; background: #c17f3a; flex-shrink: 0; }
 
-/* Sparkline canvas wrapper */
-.pr-spark-wrap {
-  width: 100%;
-  background: #fdf9f4;
-  border: 1px solid #ddd8cf;
-  border-radius: 7px;
-  padding: 10px 12px 6px;
-  margin-bottom: 4px;
-}
-.pr-spark-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 7px;
-  color: #8a8078;
-  margin-top: 3px;
-}
+.pr-spark-wrap { width: 100%; background: #fdf9f4; border: 1px solid #ddd8cf; border-radius: 7px; padding: 10px 12px 6px; margin-bottom: 4px; }
+.pr-spark-labels { display: flex; justify-content: space-between; font-size: 7px; color: #8a8078; margin-top: 3px; }
 
-/* Tables */
-.pr-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 14px;
-  font-size: 9px;
-}
-.pr-table thead th {
-  background: #f4f1ec;
-  padding: 6px 8px;
-  text-align: left;
-  font-size: 7.5px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #8a8078;
-  border-bottom: 1.5px solid #ddd8cf;
-  border-top: 1px solid #ddd8cf;
-}
+.pr-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 9px; }
+.pr-table thead th { background: #f4f1ec; padding: 6px 8px; text-align: left; font-size: 7.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8a8078; border-bottom: 1.5px solid #ddd8cf; border-top: 1px solid #ddd8cf; }
 .pr-table thead th:first-child { border-left: 1px solid #ddd8cf; border-radius: 7px 0 0 0; }
 .pr-table thead th:last-child  { border-right: 1px solid #ddd8cf; border-radius: 0 7px 0 0; }
 .pr-table tbody tr { border-bottom: 1px solid #edeae4; }
 .pr-table tbody tr:nth-child(even) { background: #fdf9f4; }
-.pr-table tbody td {
-  padding: 5px 8px;
-  color: #1a1714;
-  vertical-align: middle;
-  border-left: 1px solid #edeae4;
-  border-right: 1px solid #edeae4;
-}
+.pr-table tbody td { padding: 5px 8px; color: #1a1714; vertical-align: middle; border-left: 1px solid #edeae4; border-right: 1px solid #edeae4; }
 .pr-table tbody td:first-child { border-left: 1px solid #ddd8cf; }
 .pr-table tbody td:last-child  { border-right: 1px solid #ddd8cf; }
-.pr-table tfoot td {
-  padding: 6px 8px;
-  background: #f4f1ec;
-  font-weight: 700;
-  font-size: 8.5px;
-  border-top: 1.5px solid #ddd8cf;
-  border-bottom: 1px solid #ddd8cf;
-}
+.pr-table tfoot td { padding: 6px 8px; background: #f4f1ec; font-weight: 700; font-size: 8.5px; border-top: 1.5px solid #ddd8cf; border-bottom: 1px solid #ddd8cf; }
 .pr-table tfoot td:first-child { border-left: 1px solid #ddd8cf; }
 .pr-table tfoot td:last-child  { border-right: 1px solid #ddd8cf; }
 .pr-rank { color: #8a8078; font-weight: 700; font-size: 8px; }
 .pr-name { font-weight: 600; }
 .pr-top-name { font-weight: 700; color: #1a1714; }
-.pr-cat-badge {
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: 20px;
-  font-size: 7px;
-  font-weight: 700;
-  text-transform: capitalize;
-}
+.pr-cat-badge { display: inline-block; padding: 1px 6px; border-radius: 20px; font-size: 7px; font-weight: 700; text-transform: capitalize; }
 .pr-cat-badge.beans     { background: rgba(193,127,58,0.12); color: #a0631e; }
 .pr-cat-badge.dairy     { background: rgba(25,118,210,0.12); color: #1565c0; }
 .pr-cat-badge.syrups    { background: rgba(123,31,162,0.12); color: #6a1b9a; }
@@ -211,16 +169,8 @@
 .pr-mini-bar-bg { background: #edeae4; border-radius: 3px; height: 6px; overflow: hidden; }
 .pr-mini-bar-fill { height: 6px; border-radius: 3px; background: #c17f3a; }
 
-/* Category summary */
 .pr-cat-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-.pr-cat-card {
-  flex: 1;
-  min-width: 120px;
-  background: #fdf9f4;
-  border: 1px solid #ddd8cf;
-  border-radius: 7px;
-  padding: 8px 10px;
-}
+.pr-cat-card { flex: 1; min-width: 120px; background: #fdf9f4; border: 1px solid #ddd8cf; border-radius: 7px; padding: 8px 10px; }
 .pr-cat-card-name { font-size: 8px; font-weight: 700; text-transform: capitalize; color: #5a534a; margin-bottom: 3px; }
 .pr-cat-card-val { font-size: 13px; font-weight: 800; color: #c17f3a; line-height: 1; }
 .pr-cat-card-sub { font-size: 7px; color: #8a8078; margin-top: 2px; }
@@ -230,25 +180,10 @@
 .pr-cat-bar-fill { height: 8px; border-radius: 4px; }
 .pr-cat-bar-val { font-size: 8px; font-weight: 700; color: #c17f3a; width: 70px; text-align: right; flex-shrink: 0; }
 
-/* Timeline table */
 .pr-timeline-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .pr-timeline-table { width: 100%; border-collapse: collapse; font-size: 8.5px; }
-.pr-timeline-table thead th {
-  background: #f4f1ec;
-  padding: 5px 7px;
-  text-align: left;
-  font-size: 7px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #8a8078;
-  border: 1px solid #ddd8cf;
-}
-.pr-timeline-table tbody td {
-  padding: 4px 7px;
-  border: 1px solid #edeae4;
-  color: #1a1714;
-}
+.pr-timeline-table thead th { background: #f4f1ec; padding: 5px 7px; text-align: left; font-size: 7px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8a8078; border: 1px solid #ddd8cf; }
+.pr-timeline-table tbody td { padding: 4px 7px; border: 1px solid #edeae4; color: #1a1714; }
 .pr-timeline-table tbody tr:nth-child(even) { background: #fdf9f4; }
 .pr-timeline-weekend { background: #fff8f0 !important; }
 .pr-timeline-best { background: rgba(193,127,58,0.08) !important; font-weight: 700; }
@@ -256,202 +191,91 @@
 .pr-timeline-bar-bg { background: #edeae4; border-radius: 2px; height: 5px; overflow: hidden; }
 .pr-timeline-bar-fill { height: 5px; border-radius: 2px; background: #c17f3a; }
 
-/* Insights */
 .pr-insights { margin-bottom: 14px; }
-.pr-insight-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 7px 10px;
-  background: #fdf9f4;
-  border: 1px solid #ddd8cf;
-  border-left: 3px solid #c17f3a;
-  border-radius: 0 7px 7px 0;
-  margin-bottom: 5px;
-  font-size: 9px;
-  color: #5a534a;
-  line-height: 1.6;
-}
-.pr-insight-num {
-  font-size: 8px;
-  font-weight: 800;
-  color: #c17f3a;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
+.pr-insight-item { display: flex; align-items: flex-start; gap: 8px; padding: 7px 10px; background: #fdf9f4; border: 1px solid #ddd8cf; border-left: 3px solid #c17f3a; border-radius: 0 7px 7px 0; margin-bottom: 5px; font-size: 9px; color: #5a534a; line-height: 1.6; }
+.pr-insight-num { font-size: 8px; font-weight: 800; color: #c17f3a; flex-shrink: 0; margin-top: 1px; }
 
-/* Footer */
-.pr-footer {
-  margin-top: 20px;
-  padding-top: 10px;
-  border-top: 1px solid #ddd8cf;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+.pr-footer { margin-top: 20px; padding-top: 10px; border-top: 1px solid #ddd8cf; display: flex; justify-content: space-between; align-items: center; }
 .pr-footer-left { font-size: 7.5px; color: #8a8078; }
 .pr-footer-brand { font-size: 9px; font-weight: 800; color: #c17f3a; letter-spacing: 0.1em; }
 .pr-footer-right { font-size: 7.5px; color: #8a8078; text-align: right; }
-.pr-confidential {
-  display: inline-block;
-  background: rgba(193,127,58,0.08);
-  border: 1px solid rgba(193,127,58,0.25);
-  color: #c17f3a;
-  font-size: 7px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: 2px 7px;
-  border-radius: 20px;
-  margin-bottom: 3px;
-}
+.pr-confidential { display: inline-block; background: rgba(193,127,58,0.08); border: 1px solid rgba(193,127,58,0.25); color: #c17f3a; font-size: 7px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 2px 7px; border-radius: 20px; margin-bottom: 3px; }
 
-/* ── PRINT BUTTON in app ── */
 .btn-print-pdf {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: #1a1714;
-  color: #fff;
-  border: none;
-  border-radius: 9px;
-  padding: 0.6rem 1.25rem;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 0.84rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background: #1a1714; color: #fff; border: none; border-radius: 9px;
+  padding: 0.6rem 1.25rem; font-family: 'DM Sans', sans-serif;
+  font-size: 0.84rem; font-weight: 600; cursor: pointer;
+  transition: all 0.18s ease; letter-spacing: 0.01em; white-space: nowrap;
 }
 .btn-print-pdf:hover { background: #333; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.18); }
 .btn-print-pdf svg { flex-shrink: 0; }
 
-/* ── PDF PREVIEW MODAL ── */
 #pdf-preview-modal {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.7);
-  z-index: 500;
-  display: none;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 2rem 1rem;
-  backdrop-filter: blur(4px);
-  overflow-y: auto;
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 500;
+  display: none; align-items: flex-start; justify-content: center;
+  padding: 2rem 1rem; backdrop-filter: blur(4px); overflow-y: auto;
 }
 #pdf-preview-modal.show { display: flex; }
 
-.pdf-preview-sheet {
-  background: #fff;
-  width: 100%;
-  max-width: 820px;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 40px 100px rgba(0,0,0,0.4);
-  margin: auto;
-}
-
-.pdf-preview-toolbar {
-  background: #1a1714;
-  padding: 0.9rem 1.4rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-.pdf-preview-toolbar-left {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-.pdf-preview-title {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: 0.02em;
-}
-.pdf-preview-subtitle {
-  font-size: 0.72rem;
-  color: rgba(255,255,255,0.45);
-  font-family: 'DM Sans', sans-serif;
-}
+.pdf-preview-sheet { background: #fff; width: 100%; max-width: 820px; border-radius: 12px; overflow: hidden; box-shadow: 0 40px 100px rgba(0,0,0,0.4); margin: auto; }
+.pdf-preview-toolbar { background: #1a1714; padding: 0.9rem 1.4rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.pdf-preview-toolbar-left { display: flex; align-items: center; gap: 0.75rem; }
+.pdf-preview-title { font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 700; color: #fff; letter-spacing: 0.02em; }
+.pdf-preview-subtitle { font-size: 0.72rem; color: rgba(255,255,255,0.45); font-family: 'DM Sans', sans-serif; }
 .pdf-preview-actions { display: flex; gap: 0.6rem; }
 
-.btn-pdf-download {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: #c17f3a;
-  color: #fff;
-  border: none;
-  border-radius: 7px;
-  padding: 0.52rem 1.1rem;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.18s;
-}
+.btn-pdf-download { display: inline-flex; align-items: center; gap: 0.4rem; background: #c17f3a; color: #fff; border: none; border-radius: 7px; padding: 0.52rem 1.1rem; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: background 0.18s; }
 .btn-pdf-download:hover { background: #a8692c; }
 
-.btn-pdf-print {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: rgba(255,255,255,0.1);
-  color: #fff;
-  border: 1px solid rgba(255,255,255,0.18);
-  border-radius: 7px;
-  padding: 0.52rem 1.1rem;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.18s;
-}
+.btn-pdf-print { display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.18); border-radius: 7px; padding: 0.52rem 1.1rem; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: background 0.18s; }
 .btn-pdf-print:hover { background: rgba(255,255,255,0.18); }
 
-.btn-pdf-close {
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.14);
-  color: rgba(255,255,255,0.7);
-  border-radius: 7px;
-  width: 34px; height: 34px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  transition: background 0.18s;
-  font-size: 0;
-}
+.btn-pdf-close { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); color: rgba(255,255,255,0.7); border-radius: 7px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.18s; font-size: 0; }
 .btn-pdf-close:hover { background: rgba(255,255,255,0.18); }
 
-.pdf-preview-body {
-  padding: 32px 40px;
-  background: #f0ede8;
-  min-height: 200px;
-}
+.pdf-preview-body { padding: 32px 40px; background: #f0ede8; min-height: 200px; }
+.pdf-paper { background: #fff; box-shadow: 0 4px 30px rgba(0,0,0,0.18); padding: 32px 36px; border-radius: 3px; max-width: 780px; margin: 0 auto; }
 
-.pdf-paper {
-  background: #fff;
-  box-shadow: 0 4px 30px rgba(0,0,0,0.18);
-  padding: 32px 36px;
-  border-radius: 3px;
-  max-width: 780px;
-  margin: 0 auto;
+/* Loading overlay */
+#fb-loading {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 1rem; z-index: 999;
 }
+.fb-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.fb-loading-text { font-size: 0.82rem; color: var(--text3); font-family: 'DM Sans', sans-serif; }
 </style>
 </head>
 <body>
 
+<!-- Loading overlay while Firebase initializes -->
+<div id="fb-loading">
+  <svg width="40" height="40" viewBox="0 0 28 28" fill="none">
+    <circle cx="14" cy="14" r="13" stroke="#c17f3a" stroke-width="2"/>
+    <path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="#c17f3a" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="14" cy="14" r="2" fill="#c17f3a"/>
+  </svg>
+  <div class="fb-spinner"></div>
+  <div class="fb-loading-text">Loading OXIS…</div>
+</div>
+
 <!-- ═══ AUTH ═══════════════════════════════════════════ -->
-<div id="auth-wrapper">
+<div id="auth-wrapper" style="display:none;">
   <div class="auth-bg-grid"></div>
   <div class="auth-card">
     <div class="auth-logo">
       <div class="auth-logo-mark">
         <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="var(--accent)" stroke-width="2"/><path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/><circle cx="14" cy="14" r="2" fill="var(--accent)"/></svg>
       </div>
-      <span class="brand-name">GRND</span>
+      <span class="brand-name">OXIS</span>
       <span class="brand-tag">Coffee Inventory System</span>
     </div>
     <div id="login-panel">
@@ -465,10 +289,10 @@
     </div>
     <div id="signup-panel" style="display:none;">
       <h2 class="auth-heading">Create account</h2>
-      <p class="auth-sub">Set up your GRND workspace</p>
+      <p class="auth-sub">Set up your OXIS workspace</p>
       <div class="err-box" id="su-err"></div>
       <div class="form-group"><label>Full Name</label><input type="text" id="su-name" placeholder="Juan dela Cruz" /></div>
-      <div class="form-group"><label>Shop Name</label><input type="text" id="su-shop" placeholder="e.g. GRND Coffee" /></div>
+      <div class="form-group"><label>Shop Name</label><input type="text" id="su-shop" placeholder="e.g. OXIS Coffee" /></div>
       <div class="form-group"><label>Email</label><input type="email" id="su-email" placeholder="you@coffeeshop.com" /></div>
       <div class="form-group"><label>Phone Number</label><input type="tel" id="su-phone" placeholder="+63 9XX XXX XXXX" /></div>
       <div class="form-group"><label>Role / Position</label>
@@ -494,11 +318,11 @@
 </div>
 
 <!-- ═══ APP ════════════════════════════════════════════ -->
-<div id="app-wrapper">
+<div id="app-wrapper" style="display:none;">
   <header class="app-header">
     <div class="header-brand">
       <svg width="20" height="20" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="var(--accent)" stroke-width="2"/><path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/><circle cx="14" cy="14" r="2" fill="var(--accent)"/></svg>
-      GRND <small>Coffee Inventory System</small>
+      OXIS <small>Coffee Inventory System</small>
     </div>
     <div class="header-right">
       <nav class="header-nav" id="header-nav">
@@ -601,21 +425,18 @@
             <option value="month" selected>This Month</option>
             <option value="all">All Time</option>
           </select>
-          <!-- ★ PRINT / DOWNLOAD PDF BUTTON ★ -->
           <button class="btn-print-pdf" onclick="openPdfPreview()">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             Export PDF
           </button>
         </div>
       </div>
-
       <div class="stats-row">
         <div class="stat-card"><div class="stat-icon-wrap stat-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div><div class="stat-label">Total Revenue</div><div class="stat-value" id="sl-rev" style="font-size:1.25rem;">₱0</div><div class="stat-sub">from sold items</div></div></div>
         <div class="stat-card"><div class="stat-icon-wrap stat-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" x2="21" y1="6" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div><div><div class="stat-label">Units Sold</div><div class="stat-value" id="sl-units">0</div><div class="stat-sub">total quantity</div></div></div>
         <div class="stat-card"><div class="stat-icon-wrap stat-orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect width="4" height="5" x="7" y="10" rx=".5"/><rect width="4" height="10" x="13" y="5" rx=".5"/></svg></div><div><div class="stat-label">Transactions</div><div class="stat-value" id="sl-txn">0</div><div class="stat-sub">sales movements</div></div></div>
         <div class="stat-card"><div class="stat-icon-wrap stat-purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div><div><div class="stat-label">Avg per Sale</div><div class="stat-value" id="sl-avg" style="font-size:1.25rem;">₱0</div><div class="stat-sub">per transaction</div></div></div>
       </div>
-
       <div class="report-grid-2col">
         <div class="report-section"><h3 class="section-heading"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect width="4" height="5" x="7" y="10" rx=".5"/><rect width="4" height="10" x="13" y="5" rx=".5"/></svg>Sales by Item</h3><div id="sales-by-item"></div></div>
         <div class="report-section"><h3 class="section-heading"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>Recent Sales</h3><div id="sales-recent"></div></div>
@@ -660,7 +481,7 @@
   </main>
 </div>
 
-<!-- ═══ MODALS (unchanged) ════════════════════════════════ -->
+<!-- ═══ MODALS ════════════════════════════════════════════ -->
 <div class="modal-backdrop" id="move-modal">
   <div class="modal move-modal">
     <div class="modal-header"><h3 class="modal-title">Update Stock</h3><button class="modal-close" onclick="closeMove()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
@@ -734,16 +555,16 @@
     <div class="modal-header"><h3 class="modal-title">Terms &amp; Conditions</h3><button class="modal-close" onclick="closeTOS()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
     <div class="tos-body">
       <p class="tos-effective">Effective Date: January 1, 2025</p>
-      <h4>1. Acceptance of Terms</h4><p>By creating an account and using GRND ("the System"), you agree to be bound by these Terms and Conditions.</p>
-      <h4>2. Use of the System</h4><p>GRND is a coffee inventory management system intended for authorized business users.</p>
+      <h4>1. Acceptance of Terms</h4><p>By creating an account and using OXIS ("the System"), you agree to be bound by these Terms and Conditions.</p>
+      <h4>2. Use of the System</h4><p>OXIS is a coffee inventory management system intended for authorized business users.</p>
       <h4>3. Account Responsibility</h4><p>You are responsible for maintaining the confidentiality of your account credentials.</p>
-      <h4>4. Data &amp; Privacy</h4><p>All inventory data you enter is stored locally on your device via browser localStorage.</p>
-      <h4>5. Intellectual Property</h4><p>The GRND name, logo, and system design are the intellectual property of GRND.</p>
-      <h4>6. Limitation of Liability</h4><p>GRND is provided "as is" without warranties of any kind.</p>
+      <h4>4. Data &amp; Privacy</h4><p>All inventory data you enter is stored securely in the cloud via Firebase Firestore.</p>
+      <h4>5. Intellectual Property</h4><p>The OXIS name, logo, and system design are the intellectual property of OXIS.</p>
+      <h4>6. Limitation of Liability</h4><p>OXIS is provided "as is" without warranties of any kind.</p>
       <h4>7. Prohibited Activities</h4><p>You agree not to use the System for any fraudulent or illegal purpose.</p>
       <h4>8. Modifications</h4><p>We reserve the right to modify these Terms at any time.</p>
       <h4>9. Governing Law</h4><p>These Terms shall be governed by the laws of the Republic of the Philippines.</p>
-      <h4>10. Contact</h4><p>For questions about these Terms, please contact us at <strong>support@grnd.ph</strong>.</p>
+      <h4>10. Contact</h4><p>For questions about these Terms, please contact us at <strong>support@oxis.ph</strong>.</p>
     </div>
     <div class="tos-actions"><button class="btn-primary" onclick="acceptTOS()">I Understand &amp; Accept</button></div>
   </div>
@@ -757,7 +578,7 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c17f3a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         <div>
           <div class="pdf-preview-title">Sales Report — PDF Preview</div>
-          <div class="pdf-preview-subtitle" id="pdf-preview-subtitle">GRND Coffee · Loading…</div>
+          <div class="pdf-preview-subtitle" id="pdf-preview-subtitle">OXIS Coffee · Loading…</div>
         </div>
       </div>
       <div class="pdf-preview-actions">
@@ -775,14 +596,12 @@
       </div>
     </div>
     <div class="pdf-preview-body">
-      <div class="pdf-paper" id="pdf-paper-content">
-        <!-- Populated dynamically -->
-      </div>
+      <div class="pdf-paper" id="pdf-paper-content"></div>
     </div>
   </div>
 </div>
 
-<!-- ═══ PRINT ROOT (invisible on screen, shown on print) ═ -->
+<!-- ═══ PRINT ROOT ════════════════════════════════════════ -->
 <div id="print-report-root"></div>
 
 <div class="toast-wrap" id="toast-wrap"></div>
