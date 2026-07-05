@@ -1,610 +1,335 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OXIS — Coffee Inventory System</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
-
-<!-- Firebase SDK -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-analytics.js";
-  import {
-    getAuth,
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    signOut,
-    onAuthStateChanged,
-    updateProfile
-  } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
-  import {
-    getFirestore,
-    doc,
-    getDoc,
-    setDoc,
-    updateDoc,
-    collection,
-    getDocs,
-    query,
-    where,
-    orderBy,
-    limit,
-    writeBatch,
-    serverTimestamp,
-    Timestamp
-  } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyCrivIjKp4fj-IGop_xMO2h8RjQZyok1VI",
-    authDomain: "grnd-2c2f3.firebaseapp.com",
-    projectId: "grnd-2c2f3",
-    storageBucket: "grnd-2c2f3.firebasestorage.app",
-    messagingSenderId: "986943795686",
-    appId: "1:986943795686:web:194c73e1d4f5e46792a627",
-    measurementId: "G-329Q640LML"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-
-  // Expose to global scope for app.js
-  window._firebase = { auth, db, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where, orderBy, limit, writeBatch, serverTimestamp, Timestamp };
-</script>
-
-<!-- ═══ PRINT STYLES ══════════════════════════════════════ -->
+<title>OXIS — Coffee Inventory, Sorted</title>
+<meta name="description" content="OXIS helps coffee shops track beans, dairy, syrups, and supplies in real time, log every sale and restock, and generate reports in one click.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
 <style>
-@media print {
-  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-  @page { size: A4 portrait; margin: 14mm 16mm 16mm 16mm; }
-  body > *:not(#print-report-root) { display: none !important; }
-  #print-report-root { display: block !important; }
-  #print-report-root { font-family: 'DM Sans', sans-serif; color: #1a1714; background: #fff; }
-  .pr-page-break { page-break-before: always; }
-  .pr-avoid-break { page-break-inside: avoid; }
-}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --bg:#f4f1ec;
+    --bg2:#ffffff;
+    --paper:#fbf8f3;
+    --ink:#1a1714;
+    --ink2:#5a534a;
+    --ink3:#8a8078;
+    --border:#ddd8cf;
+    --accent:#c17f3a;
+    --accent-h:#a8692c;
+    --accent-soft:rgba(193,127,58,0.1);
+    --ok:#5f7a52;
+    --coffee:#241a12;
+    --coffee2:#31241a;
+    --serif:'Fraunces',serif;
+    --sans:'DM Sans',sans-serif;
+  }
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:var(--sans);
+    background:var(--bg);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  a{color:inherit;text-decoration:none;}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 1.5rem;}
+  .eyebrow{
+    font-size:0.72rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;
+    color:var(--accent-h);
+  }
 
-#print-report-root { display: none; }
+  /* ── NAV ─────────────────────────────────────── */
+  .nav{
+    position:sticky;top:0;z-index:20;
+    background:rgba(244,241,236,0.85);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);
+  }
+  .nav-inner{
+    max-width:1120px;margin:0 auto;padding:0.9rem 1.5rem;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .nav-brand{display:flex;align-items:center;gap:0.55rem;}
+  .nav-logo{
+    width:34px;height:34px;border-radius:10px;
+    background:var(--accent-soft);border:1px solid rgba(193,127,58,0.3);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .nav-name{font-weight:700;letter-spacing:0.1em;font-size:1.05rem;color:var(--ink);}
+  .nav-cta{
+    display:flex;align-items:center;gap:1.6rem;
+  }
+  .nav-link{font-size:0.9rem;font-weight:500;color:var(--ink2);}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;
+    font-family:var(--sans);font-weight:600;font-size:0.9rem;
+    padding:0.7rem 1.3rem;border-radius:9px;border:1px solid transparent;
+    cursor:pointer;transition:transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    white-space:nowrap;
+  }
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{background:var(--accent-h);transform:translateY(-1px);box-shadow:0 8px 20px rgba(193,127,58,0.35);}
+  .btn-ghost{background:transparent;border-color:var(--border);color:var(--ink);}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent-h);}
+  .btn-dark{background:var(--paper);color:var(--coffee);}
+  .btn-dark:hover{background:#fff;transform:translateY(-1px);}
 
-.pr-wrap {
-  font-family: 'DM Sans', sans-serif;
-  color: #1a1714;
-  background: #fff;
-  width: 100%;
-  max-width: 780px;
-  margin: 0 auto;
-  padding: 0;
-  font-size: 11px;
-  line-height: 1.5;
-}
+  /* ── HERO ────────────────────────────────────── */
+  .hero{
+    padding:4.5rem 0 3.5rem;
+    display:grid;grid-template-columns:1.05fr 0.95fr;gap:3rem;align-items:center;
+  }
+  .hero h1{
+    font-family:var(--serif);
+    font-size:clamp(2.1rem,4.4vw,3.4rem);
+    font-weight:600;line-height:1.08;letter-spacing:-0.01em;
+    margin:0.6rem 0 1.1rem;
+  }
+  .hero h1 em{font-style:italic;color:var(--accent-h);}
+  .hero p{
+    font-size:1.05rem;line-height:1.6;color:var(--ink2);max-width:480px;margin-bottom:1.8rem;
+  }
+  .hero-actions{display:flex;gap:0.8rem;flex-wrap:wrap;margin-bottom:1.4rem;}
+  .hero-note{font-size:0.82rem;color:var(--ink3);}
 
-.pr-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding-bottom: 10px;
-  border-bottom: 2.5px solid #c17f3a;
-  margin-bottom: 14px;
-}
-.pr-brand { display: flex; align-items: center; gap: 8px; }
-.pr-logo-mark {
-  width: 34px; height: 34px;
-  background: rgba(193,127,58,0.1);
-  border: 1.5px solid rgba(193,127,58,0.35);
-  border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-}
-.pr-brand-name { font-size: 20px; font-weight: 800; color: #c17f3a; letter-spacing: 0.1em; }
-.pr-brand-sub { font-size: 7px; color: #8a8078; letter-spacing: 0.2em; text-transform: uppercase; margin-top: 2px; }
-.pr-report-meta { text-align: right; }
-.pr-report-title { font-size: 17px; font-weight: 800; color: #1a1714; letter-spacing: -0.01em; }
-.pr-report-period { font-size: 8px; color: #8a8078; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px; }
+  .anim{opacity:0;transform:translateY(14px);animation:rise 0.7s ease forwards;}
+  @keyframes rise{to{opacity:1;transform:translateY(0);}}
 
-.pr-infobar {
-  display: flex;
-  gap: 0;
-  margin-bottom: 14px;
-  border: 1px solid #ddd8cf;
-  border-radius: 7px;
-  overflow: hidden;
-  background: #f9f6f1;
-}
-.pr-infobar-item { flex: 1; padding: 7px 10px; border-right: 1px solid #ddd8cf; }
-.pr-infobar-item:last-child { border-right: none; }
-.pr-infobar-label { font-size: 7px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #8a8078; margin-bottom: 2px; }
-.pr-infobar-val { font-size: 9.5px; font-weight: 600; color: #1a1714; }
+  /* ── TICKET (signature element) ─────────────── */
+  .ticket-stage{display:flex;justify-content:center;}
+  .ticket{
+    width:100%;max-width:340px;background:var(--paper);
+    border:1px solid var(--border);border-radius:16px;
+    box-shadow:0 24px 60px rgba(36,26,18,0.14);
+    padding:1.5rem 1.5rem 1.7rem;position:relative;
+  }
+  .ticket::before{
+    content:"";position:absolute;top:-1px;left:18px;right:18px;height:10px;
+    background-image:radial-gradient(circle, var(--bg) 3px, transparent 3.2px);
+    background-size:16px 16px;background-position:0 -3px;
+  }
+  .ticket-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.1rem;}
+  .ticket-tag{font-size:0.62rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink3);font-weight:700;}
+  .ticket-lot{font-size:0.62rem;color:var(--ink3);}
+  .ticket-name{font-family:var(--serif);font-size:1.3rem;font-weight:600;margin-bottom:0.15rem;}
+  .ticket-cat{font-size:0.78rem;color:var(--ink3);margin-bottom:1.1rem;}
+  .ticket-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.4rem;}
+  .ticket-qty{font-size:1.7rem;font-weight:700;font-family:var(--serif);}
+  .ticket-unit{font-size:0.85rem;color:var(--ink3);}
+  .ticket-bar-track{height:7px;border-radius:5px;background:var(--border);overflow:hidden;margin:0.7rem 0 0.9rem;}
+  .ticket-bar-fill{
+    height:100%;width:0%;border-radius:5px;
+    background:linear-gradient(90deg,var(--accent),var(--accent-h));
+    animation:fill 1.6s 0.4s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  @keyframes fill{to{width:62%;}}
+  .ticket-foot{display:flex;justify-content:space-between;align-items:center;}
+  .pill{
+    font-size:0.68rem;font-weight:700;letter-spacing:0.04em;
+    padding:0.28rem 0.6rem;border-radius:99px;
+  }
+  .pill-ok{background:rgba(95,122,82,0.14);color:var(--ok);}
+  .ticket-updated{font-size:0.7rem;color:var(--ink3);}
+  .ticket-log{
+    margin-top:1rem;padding-top:0.9rem;border-top:1px dashed var(--border);
+    display:flex;flex-direction:column;gap:0.45rem;
+  }
+  .log-row{display:flex;justify-content:space-between;font-size:0.78rem;color:var(--ink2);}
+  .log-tag{font-weight:700;font-size:0.66rem;letter-spacing:0.05em;padding:0.15rem 0.4rem;border-radius:5px;}
+  .log-add{background:rgba(95,122,82,0.14);color:var(--ok);}
+  .log-sell{background:var(--accent-soft);color:var(--accent-h);}
 
-.pr-kpi-row { display: flex; gap: 8px; margin-bottom: 14px; }
-.pr-kpi { flex: 1; background: #fdf9f4; border: 1px solid #ddd8cf; border-radius: 7px; padding: 9px 10px; }
-.pr-kpi-label { font-size: 7px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #8a8078; margin-bottom: 4px; }
-.pr-kpi-val { font-size: 18px; font-weight: 800; color: #c17f3a; line-height: 1; letter-spacing: -0.02em; }
-.pr-kpi-sub { font-size: 7.5px; color: #8a8078; margin-top: 3px; }
-.pr-kpi-val.blue   { color: #1976d2; }
-.pr-kpi-val.purple { color: #7b1fa2; }
-.pr-kpi-val.green  { color: #2e7d32; }
+  /* ── FEATURES ────────────────────────────────── */
+  .section{padding:4.5rem 0;}
+  .section-head{max-width:560px;margin-bottom:2.6rem;}
+  .section-head h2{
+    font-family:var(--serif);font-weight:600;font-size:clamp(1.6rem,3vw,2.2rem);
+    margin-top:0.5rem;letter-spacing:-0.01em;
+  }
+  .feature-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.1rem;}
+  .feature-card{
+    background:var(--bg2);border:1px solid var(--border);border-radius:14px;
+    padding:1.5rem 1.4rem;transition:transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .feature-card:hover{transform:translateY(-4px);box-shadow:0 16px 30px rgba(0,0,0,0.06);}
+  .feature-icon{
+    width:38px;height:38px;border-radius:10px;background:var(--accent-soft);
+    display:flex;align-items:center;justify-content:center;margin-bottom:0.9rem;color:var(--accent-h);
+  }
+  .feature-card h3{font-size:1rem;font-weight:700;margin-bottom:0.45rem;}
+  .feature-card p{font-size:0.88rem;color:var(--ink2);line-height:1.55;}
 
-.pr-section-head {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
-  color: #5a534a; border-bottom: 1px solid #ddd8cf;
-  padding-bottom: 5px; margin-bottom: 10px; margin-top: 14px;
-}
-.pr-section-head-dot { width: 5px; height: 5px; border-radius: 50%; background: #c17f3a; flex-shrink: 0; }
+  /* ── HOW IT WORKS ────────────────────────────── */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:1.4rem;}
+  .step{position:relative;padding-left:0.1rem;}
+  .step-num{
+    font-family:var(--serif);font-size:2.4rem;font-weight:600;color:var(--accent-soft);
+    -webkit-text-stroke:1.5px var(--accent);
+    line-height:1;margin-bottom:0.9rem;display:block;
+  }
+  .step h3{font-size:1.05rem;font-weight:700;margin-bottom:0.5rem;}
+  .step p{font-size:0.9rem;color:var(--ink2);line-height:1.6;max-width:280px;}
 
-.pr-spark-wrap { width: 100%; background: #fdf9f4; border: 1px solid #ddd8cf; border-radius: 7px; padding: 10px 12px 6px; margin-bottom: 4px; }
-.pr-spark-labels { display: flex; justify-content: space-between; font-size: 7px; color: #8a8078; margin-top: 3px; }
+  /* ── CTA BAND ────────────────────────────────── */
+  .cta-band{
+    background:radial-gradient(120% 160% at 20% 0%, var(--coffee2), var(--coffee));
+    color:#f2ece3;border-radius:22px;padding:3.2rem 2.5rem;
+    display:flex;align-items:center;justify-content:space-between;gap:2rem;flex-wrap:wrap;
+  }
+  .cta-band h2{font-family:var(--serif);font-weight:600;font-size:clamp(1.5rem,3vw,2rem);max-width:480px;}
+  .cta-band p{color:#c9beae;margin-top:0.5rem;max-width:440px;font-size:0.95rem;}
 
-.pr-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 9px; }
-.pr-table thead th { background: #f4f1ec; padding: 6px 8px; text-align: left; font-size: 7.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8a8078; border-bottom: 1.5px solid #ddd8cf; border-top: 1px solid #ddd8cf; }
-.pr-table thead th:first-child { border-left: 1px solid #ddd8cf; border-radius: 7px 0 0 0; }
-.pr-table thead th:last-child  { border-right: 1px solid #ddd8cf; border-radius: 0 7px 0 0; }
-.pr-table tbody tr { border-bottom: 1px solid #edeae4; }
-.pr-table tbody tr:nth-child(even) { background: #fdf9f4; }
-.pr-table tbody td { padding: 5px 8px; color: #1a1714; vertical-align: middle; border-left: 1px solid #edeae4; border-right: 1px solid #edeae4; }
-.pr-table tbody td:first-child { border-left: 1px solid #ddd8cf; }
-.pr-table tbody td:last-child  { border-right: 1px solid #ddd8cf; }
-.pr-table tfoot td { padding: 6px 8px; background: #f4f1ec; font-weight: 700; font-size: 8.5px; border-top: 1.5px solid #ddd8cf; border-bottom: 1px solid #ddd8cf; }
-.pr-table tfoot td:first-child { border-left: 1px solid #ddd8cf; }
-.pr-table tfoot td:last-child  { border-right: 1px solid #ddd8cf; }
-.pr-rank { color: #8a8078; font-weight: 700; font-size: 8px; }
-.pr-name { font-weight: 600; }
-.pr-top-name { font-weight: 700; color: #1a1714; }
-.pr-cat-badge { display: inline-block; padding: 1px 6px; border-radius: 20px; font-size: 7px; font-weight: 700; text-transform: capitalize; }
-.pr-cat-badge.beans     { background: rgba(193,127,58,0.12); color: #a0631e; }
-.pr-cat-badge.dairy     { background: rgba(25,118,210,0.12); color: #1565c0; }
-.pr-cat-badge.syrups    { background: rgba(123,31,162,0.12); color: #6a1b9a; }
-.pr-cat-badge.supplies  { background: rgba(46,125,50,0.12);  color: #1b5e20; }
-.pr-cat-badge.equipment { background: rgba(230,81,0,0.12);   color: #bf360c; }
-.pr-cat-badge.other     { background: rgba(100,100,100,0.1); color: #555;    }
-.pr-revenue { font-weight: 700; color: #c17f3a; }
-.pr-revenue-top { font-weight: 800; color: #c17f3a; font-size: 10px; }
-.pr-units { color: #5a534a; }
-.pr-pct { color: #8a8078; }
-.pr-total-label { color: #8a8078; text-transform: uppercase; letter-spacing: 0.1em; font-size: 7px; }
-.pr-total-val { font-size: 10.5px; color: #c17f3a; }
-.pr-mini-bar-wrap { width: 70px; }
-.pr-mini-bar-bg { background: #edeae4; border-radius: 3px; height: 6px; overflow: hidden; }
-.pr-mini-bar-fill { height: 6px; border-radius: 3px; background: #c17f3a; }
+  /* ── FOOTER ──────────────────────────────────── */
+  .footer{border-top:1px solid var(--border);padding:2.4rem 0;}
+  .footer-inner{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;}
+  .footer-brand{display:flex;align-items:center;gap:0.5rem;color:var(--ink2);font-size:0.85rem;}
+  .footer-links{display:flex;gap:1.4rem;font-size:0.85rem;color:var(--ink3);}
+  .footer-links a:hover{color:var(--accent-h);}
 
-.pr-cat-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-.pr-cat-card { flex: 1; min-width: 120px; background: #fdf9f4; border: 1px solid #ddd8cf; border-radius: 7px; padding: 8px 10px; }
-.pr-cat-card-name { font-size: 8px; font-weight: 700; text-transform: capitalize; color: #5a534a; margin-bottom: 3px; }
-.pr-cat-card-val { font-size: 13px; font-weight: 800; color: #c17f3a; line-height: 1; }
-.pr-cat-card-sub { font-size: 7px; color: #8a8078; margin-top: 2px; }
-.pr-cat-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.pr-cat-bar-label { width: 70px; font-size: 8px; font-weight: 600; color: #5a534a; text-transform: capitalize; flex-shrink: 0; }
-.pr-cat-bar-track { flex: 1; height: 8px; background: #edeae4; border-radius: 4px; overflow: hidden; }
-.pr-cat-bar-fill { height: 8px; border-radius: 4px; }
-.pr-cat-bar-val { font-size: 8px; font-weight: 700; color: #c17f3a; width: 70px; text-align: right; flex-shrink: 0; }
-
-.pr-timeline-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.pr-timeline-table { width: 100%; border-collapse: collapse; font-size: 8.5px; }
-.pr-timeline-table thead th { background: #f4f1ec; padding: 5px 7px; text-align: left; font-size: 7px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8a8078; border: 1px solid #ddd8cf; }
-.pr-timeline-table tbody td { padding: 4px 7px; border: 1px solid #edeae4; color: #1a1714; }
-.pr-timeline-table tbody tr:nth-child(even) { background: #fdf9f4; }
-.pr-timeline-weekend { background: #fff8f0 !important; }
-.pr-timeline-best { background: rgba(193,127,58,0.08) !important; font-weight: 700; }
-.pr-timeline-bar { width: 55px; }
-.pr-timeline-bar-bg { background: #edeae4; border-radius: 2px; height: 5px; overflow: hidden; }
-.pr-timeline-bar-fill { height: 5px; border-radius: 2px; background: #c17f3a; }
-
-.pr-insights { margin-bottom: 14px; }
-.pr-insight-item { display: flex; align-items: flex-start; gap: 8px; padding: 7px 10px; background: #fdf9f4; border: 1px solid #ddd8cf; border-left: 3px solid #c17f3a; border-radius: 0 7px 7px 0; margin-bottom: 5px; font-size: 9px; color: #5a534a; line-height: 1.6; }
-.pr-insight-num { font-size: 8px; font-weight: 800; color: #c17f3a; flex-shrink: 0; margin-top: 1px; }
-
-.pr-footer { margin-top: 20px; padding-top: 10px; border-top: 1px solid #ddd8cf; display: flex; justify-content: space-between; align-items: center; }
-.pr-footer-left { font-size: 7.5px; color: #8a8078; }
-.pr-footer-brand { font-size: 9px; font-weight: 800; color: #c17f3a; letter-spacing: 0.1em; }
-.pr-footer-right { font-size: 7.5px; color: #8a8078; text-align: right; }
-.pr-confidential { display: inline-block; background: rgba(193,127,58,0.08); border: 1px solid rgba(193,127,58,0.25); color: #c17f3a; font-size: 7px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 2px 7px; border-radius: 20px; margin-bottom: 3px; }
-
-.btn-print-pdf {
-  display: inline-flex; align-items: center; gap: 0.5rem;
-  background: #1a1714; color: #fff; border: none; border-radius: 9px;
-  padding: 0.6rem 1.25rem; font-family: 'DM Sans', sans-serif;
-  font-size: 0.84rem; font-weight: 600; cursor: pointer;
-  transition: all 0.18s ease; letter-spacing: 0.01em; white-space: nowrap;
-}
-.btn-print-pdf:hover { background: #333; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.18); }
-.btn-print-pdf svg { flex-shrink: 0; }
-
-#pdf-preview-modal {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 500;
-  display: none; align-items: flex-start; justify-content: center;
-  padding: 2rem 1rem; backdrop-filter: blur(4px); overflow-y: auto;
-}
-#pdf-preview-modal.show { display: flex; }
-
-.pdf-preview-sheet { background: #fff; width: 100%; max-width: 820px; border-radius: 12px; overflow: hidden; box-shadow: 0 40px 100px rgba(0,0,0,0.4); margin: auto; }
-.pdf-preview-toolbar { background: #1a1714; padding: 0.9rem 1.4rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-.pdf-preview-toolbar-left { display: flex; align-items: center; gap: 0.75rem; }
-.pdf-preview-title { font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 700; color: #fff; letter-spacing: 0.02em; }
-.pdf-preview-subtitle { font-size: 0.72rem; color: rgba(255,255,255,0.45); font-family: 'DM Sans', sans-serif; }
-.pdf-preview-actions { display: flex; gap: 0.6rem; }
-
-.btn-pdf-download { display: inline-flex; align-items: center; gap: 0.4rem; background: #c17f3a; color: #fff; border: none; border-radius: 7px; padding: 0.52rem 1.1rem; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: background 0.18s; }
-.btn-pdf-download:hover { background: #a8692c; }
-
-.btn-pdf-print { display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.18); border-radius: 7px; padding: 0.52rem 1.1rem; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: background 0.18s; }
-.btn-pdf-print:hover { background: rgba(255,255,255,0.18); }
-
-.btn-pdf-close { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); color: rgba(255,255,255,0.7); border-radius: 7px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.18s; font-size: 0; }
-.btn-pdf-close:hover { background: rgba(255,255,255,0.18); }
-
-.pdf-preview-body { padding: 32px 40px; background: #f0ede8; min-height: 200px; }
-.pdf-paper { background: #fff; box-shadow: 0 4px 30px rgba(0,0,0,0.18); padding: 32px 36px; border-radius: 3px; max-width: 780px; margin: 0 auto; }
-
-/* Loading overlay */
-#fb-loading {
-  position: fixed; inset: 0; background: var(--bg);
-  display: flex; align-items: center; justify-content: center;
-  flex-direction: column; gap: 1rem; z-index: 999;
-}
-.fb-spinner {
-  width: 36px; height: 36px;
-  border: 3px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.fb-loading-text { font-size: 0.82rem; color: var(--text3); font-family: 'DM Sans', sans-serif; }
+  @media (max-width:900px){
+    .hero{grid-template-columns:1fr;padding-top:3rem;}
+    .ticket-stage{order:-1;}
+    .feature-grid{grid-template-columns:repeat(2,1fr);}
+    .steps{grid-template-columns:1fr;}
+    .cta-band{flex-direction:column;align-items:flex-start;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .anim,.ticket-bar-fill{animation:none !important;opacity:1 !important;transform:none !important;width:62% !important;}
+  }
 </style>
 </head>
 <body>
 
-<!-- Loading overlay while Firebase initializes -->
-<div id="fb-loading">
-  <svg width="40" height="40" viewBox="0 0 28 28" fill="none">
-    <circle cx="14" cy="14" r="13" stroke="#c17f3a" stroke-width="2"/>
-    <path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="#c17f3a" stroke-width="1.8" stroke-linecap="round"/>
-    <circle cx="14" cy="14" r="2" fill="#c17f3a"/>
-  </svg>
-  <div class="fb-spinner"></div>
-  <div class="fb-loading-text">Loading OXIS…</div>
-</div>
-
-<!-- ═══ AUTH ═══════════════════════════════════════════ -->
-<div id="auth-wrapper" style="display:none;">
-  <div class="auth-bg-grid"></div>
-  <div class="auth-card">
-    <div class="auth-logo">
-      <div class="auth-logo-mark">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="var(--accent)" stroke-width="2"/><path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/><circle cx="14" cy="14" r="2" fill="var(--accent)"/></svg>
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <div class="nav-logo">
+        <svg width="20" height="20" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="var(--accent)" stroke-width="2"/><path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/><circle cx="14" cy="14" r="2" fill="var(--accent)"/></svg>
       </div>
-      <span class="brand-name">OXIS</span>
-      <span class="brand-tag">Coffee Inventory System</span>
+      <span class="nav-name">OXIS</span>
     </div>
-    <div id="login-panel">
-      <h2 class="auth-heading">Welcome back</h2>
-      <p class="auth-sub">Sign in to manage your inventory</p>
-      <div class="err-box" id="login-err"></div>
-      <div class="form-group"><label>Email</label><input type="email" id="li-email" placeholder="you@coffeeshop.com" /></div>
-      <div class="form-group"><label>Password</label><input type="password" id="li-pass" placeholder="••••••••" /></div>
-      <button class="btn-primary" onclick="doLogin()">Sign In</button>
-      <p class="auth-toggle">No account? <a onclick="showPanel('signup')">Create one</a></p>
-    </div>
-    <div id="signup-panel" style="display:none;">
-      <h2 class="auth-heading">Create account</h2>
-      <p class="auth-sub">Set up your OXIS workspace</p>
-      <div class="err-box" id="su-err"></div>
-      <div class="form-group"><label>Full Name</label><input type="text" id="su-name" placeholder="Juan dela Cruz" /></div>
-      <div class="form-group"><label>Shop Name</label><input type="text" id="su-shop" placeholder="e.g. OXIS Coffee" /></div>
-      <div class="form-group"><label>Email</label><input type="email" id="su-email" placeholder="you@coffeeshop.com" /></div>
-      <div class="form-group"><label>Phone Number</label><input type="tel" id="su-phone" placeholder="+63 9XX XXX XXXX" /></div>
-      <div class="form-group"><label>Role / Position</label>
-        <select id="su-role">
-          <option value="">Select role…</option>
-          <option value="Admin">Admin</option><option value="Owner">Owner</option>
-          <option value="Manager">Manager</option><option value="Barista">Barista</option>
-          <option value="Staff">Staff</option>
-        </select>
-      </div>
-      <div class="form-group"><label>Password</label><input type="password" id="su-pass" placeholder="Min. 6 characters" /></div>
-      <div class="form-group"><label>Confirm Password</label><input type="password" id="su-confirm" placeholder="Repeat password" /></div>
-      <div class="form-group tos-check">
-        <label class="checkbox-label">
-          <input type="checkbox" id="su-tos" />
-          <span>I agree to the <a class="tos-link" onclick="openTOS()">Terms &amp; Conditions</a></span>
-        </label>
-      </div>
-      <button class="btn-primary" onclick="doSignup()">Create Account</button>
-      <p class="auth-toggle">Already have an account? <a onclick="showPanel('login')">Sign in</a></p>
+    <div class="nav-cta">
+      <a class="nav-link" href="#how">How it works</a>
+      <a class="btn btn-ghost" href="app.html">Log in</a>
+      <a class="btn btn-primary" href="app.html">Get started</a>
     </div>
   </div>
-</div>
+</nav>
 
-<!-- ═══ APP ════════════════════════════════════════════ -->
-<div id="app-wrapper" style="display:none;">
-  <header class="app-header">
-    <div class="header-brand">
-      <svg width="20" height="20" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="var(--accent)" stroke-width="2"/><path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/><circle cx="14" cy="14" r="2" fill="var(--accent)"/></svg>
-      OXIS <small>Coffee Inventory System</small>
+<header class="hero wrap">
+  <div>
+    <span class="eyebrow anim">Coffee shop inventory</span>
+    <h1 class="anim" style="animation-delay:0.05s">Know what's left in the storeroom <em>before</em> the shift starts.</h1>
+    <p class="anim" style="animation-delay:0.1s">Track beans, dairy, syrups, and supplies in real time. Log every sale, use, and restock as it happens. Get a clean sales report without opening a spreadsheet.</p>
+    <div class="hero-actions anim" style="animation-delay:0.15s">
+      <a class="btn btn-primary" href="app.html">Create free account</a>
+      <a class="btn btn-ghost" href="#how">See how it works</a>
     </div>
-    <div class="header-right">
-      <nav class="header-nav" id="header-nav">
-        <button class="nav-tab active" onclick="switchTab('inventory')" id="tab-inventory">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.27 6.96 8.73 5.05 8.73-5.05"/><line x1="12" x2="12" y1="22.08" y2="12"/></svg>
-          Inventory
-        </button>
-        <button class="nav-tab" onclick="switchTab('sales')" id="tab-sales">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-          Sales
-        </button>
-        <button class="nav-tab" onclick="switchTab('reports')" id="tab-reports">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-          Reports
-        </button>
-        <button class="nav-tab" onclick="switchTab('activity')" id="tab-activity">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-          Activity
-        </button>
-        <button class="nav-tab" onclick="switchTab('admin')" id="tab-admin" style="display:none;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Admin
-        </button>
-      </nav>
-      <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Toggle dark/light mode">
-        <svg id="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-        <svg id="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-      </button>
-      <div class="notif-wrap" id="notif-wrap">
-        <button class="notif-btn" onclick="toggleNotifPanel()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-          <span class="notif-badge" id="notif-badge" style="display:none;">0</span>
-        </button>
-        <div class="notif-panel" id="notif-panel" style="display:none;">
-          <div class="notif-header">
-            <span class="notif-title">Stock Alerts</span>
-            <button class="notif-close" onclick="toggleNotifPanel()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
-          </div>
-          <div class="notif-list" id="notif-list"></div>
-        </div>
-      </div>
-      <div class="user-pill" onclick="openProfile()" title="View Profile">
-        <div class="avatar" id="hdr-avatar">J</div>
-        <div class="user-info"><div class="uname" id="hdr-name">—</div><div class="ushop" id="hdr-shop">—</div></div>
-      </div>
-      <button class="btn-logout" onclick="doLogout()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
-        Logout
-      </button>
-    </div>
-  </header>
-
-  <main class="app-main">
-
-    <!-- ── INVENTORY TAB ── -->
-    <div id="view-inventory">
-      <div class="alert-banner" id="alert-banner" style="display:none;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e65100" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
-        <span id="alert-text"></span>
-        <button class="alert-dismiss" onclick="dismissBanner()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
-      </div>
-      <div class="stats-row">
-        <div class="stat-card"><div class="stat-icon-wrap stat-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg></div><div><div class="stat-label">Total Items</div><div class="stat-value" id="st-total">0</div><div class="stat-sub">in inventory</div></div></div>
-        <div class="stat-card"><div class="stat-icon-wrap stat-orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg></div><div><div class="stat-label">Low Stock</div><div class="stat-value" id="st-low" style="color:#e65100;">0</div><div class="stat-sub">need reordering</div></div></div>
-        <div class="stat-card"><div class="stat-icon-wrap stat-red"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" x2="19.07" y1="4.93" y2="19.07"/></svg></div><div><div class="stat-label">Out of Stock</div><div class="stat-value" id="st-out" style="color:#c62828;">0</div><div class="stat-sub">need restocking</div></div></div>
-        <div class="stat-card"><div class="stat-icon-wrap stat-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div><div class="stat-label">Total Value</div><div class="stat-value" id="st-val" style="font-size:1.25rem;">₱0</div><div class="stat-sub">estimated stock value</div></div></div>
-      </div>
-      <div class="toolbar">
-        <div class="toolbar-left">
-          <div class="search-wrap"><svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input type="text" id="srch" placeholder="Search items…" oninput="render()" /></div>
-          <select class="filter-select" id="cat-f" onchange="render()"><option value="">All Categories</option><option value="beans">Beans</option><option value="dairy">Dairy</option><option value="syrups">Syrups</option><option value="equipment">Equipment</option><option value="supplies">Supplies</option><option value="other">Other</option></select>
-        </div>
-        <button class="btn-add" id="btn-add-item" onclick="openAdd()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>Add Item</button>
-      </div>
-      <div class="table-wrap">
-        <table><thead><tr>
-          <th onclick="sort('name')">Item <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg></th>
-          <th onclick="sort('category')">Category <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg></th>
-          <th onclick="sort('quantity')">Qty <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg></th>
-          <th>Unit</th>
-          <th onclick="sort('price')">Unit Price <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg></th>
-          <th>Status</th><th>Actions</th>
-        </tr></thead>
-        <tbody id="inv-tbody"></tbody></table>
-        <div class="empty-state" id="empty-st" style="display:none;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.27 6.96 8.73 5.05 8.73-5.05"/><line x1="12" x2="12" y1="22.08" y2="12"/></svg><p>No items yet. Add your first inventory item!</p></div>
-      </div>
-    </div>
-
-    <!-- ── SALES REPORT TAB ── -->
-    <div id="view-sales" style="display:none;">
-      <div class="page-header">
-        <div>
-          <h2 class="page-title">Sales Report</h2>
-          <p class="page-sub">Revenue from sold inventory items</p>
-        </div>
-        <div class="sales-filter-wrap">
-          <select class="filter-select" id="sales-period" onchange="renderSales()">
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month" selected>This Month</option>
-            <option value="all">All Time</option>
-          </select>
-          <button class="btn-print-pdf" onclick="openPdfPreview()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-            Export PDF
-          </button>
-        </div>
-      </div>
-      <div class="stats-row">
-        <div class="stat-card"><div class="stat-icon-wrap stat-green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div><div class="stat-label">Total Revenue</div><div class="stat-value" id="sl-rev" style="font-size:1.25rem;">₱0</div><div class="stat-sub">from sold items</div></div></div>
-        <div class="stat-card"><div class="stat-icon-wrap stat-blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" x2="21" y1="6" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div><div><div class="stat-label">Units Sold</div><div class="stat-value" id="sl-units">0</div><div class="stat-sub">total quantity</div></div></div>
-        <div class="stat-card"><div class="stat-icon-wrap stat-orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect width="4" height="5" x="7" y="10" rx=".5"/><rect width="4" height="10" x="13" y="5" rx=".5"/></svg></div><div><div class="stat-label">Transactions</div><div class="stat-value" id="sl-txn">0</div><div class="stat-sub">sales movements</div></div></div>
-        <div class="stat-card"><div class="stat-icon-wrap stat-purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div><div><div class="stat-label">Avg per Sale</div><div class="stat-value" id="sl-avg" style="font-size:1.25rem;">₱0</div><div class="stat-sub">per transaction</div></div></div>
-      </div>
-      <div class="report-grid-2col">
-        <div class="report-section"><h3 class="section-heading"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect width="4" height="5" x="7" y="10" rx=".5"/><rect width="4" height="10" x="13" y="5" rx=".5"/></svg>Sales by Item</h3><div id="sales-by-item"></div></div>
-        <div class="report-section"><h3 class="section-heading"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>Recent Sales</h3><div id="sales-recent"></div></div>
-      </div>
-      <div class="report-section"><h3 class="section-heading"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Sales Timeline</h3><div id="sales-timeline"></div></div>
-    </div>
-
-    <!-- ── REPORTS TAB ── -->
-    <div id="view-reports" style="display:none;">
-      <div class="page-header"><div><h2 class="page-title">Inventory Reports</h2><p class="page-sub">Overview of your current stock health</p></div></div>
-      <div class="report-summary-row">
-        <div class="report-card rc-green"><div class="rc-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div><div class="rc-body"><div class="rc-label">In Stock</div><div class="rc-val" id="rpt-ok">0</div></div></div>
-        <div class="report-card rc-orange"><div class="rc-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg></div><div class="rc-body"><div class="rc-label">Low Stock</div><div class="rc-val" id="rpt-low">0</div></div></div>
-        <div class="report-card rc-red"><div class="rc-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" x2="19.07" y1="4.93" y2="19.07"/></svg></div><div class="rc-body"><div class="rc-label">Out of Stock</div><div class="rc-val" id="rpt-out">0</div></div></div>
-        <div class="report-card rc-gold"><div class="rc-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div class="rc-body"><div class="rc-label">Total Value</div><div class="rc-val" id="rpt-val">₱0</div></div></div>
-      </div>
-      <div class="report-grid-2col">
-        <div class="report-section"><h3 class="section-heading"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Stock Movement (Last 30 Days)</h3><div id="rpt-movements"></div></div>
-        <div class="report-section"><h3 class="section-heading"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect width="4" height="7" x="7" y="7" rx=".5"/><rect width="4" height="10" x="13" y="4" rx=".5"/></svg>Stock by Category</h3><div class="cat-bars" id="cat-bars"></div></div>
-      </div>
-      <div class="report-section"><h3 class="section-heading"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>Items Needing Attention</h3><div class="attention-list" id="attention-list"></div></div>
-      <div class="report-section"><h3 class="section-heading"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Top Value Items</h3><div class="top-value-list" id="top-value-list"></div></div>
-    </div>
-
-    <!-- ── ACTIVITY TAB ── -->
-    <div id="view-activity" style="display:none;">
-      <div class="page-header"><div><h2 class="page-title">Stock Activity Log</h2><p class="page-sub">Every stock movement recorded in real-time</p></div></div>
-      <div class="activity-list" id="activity-list"></div>
-    </div>
-
-    <!-- ── ADMIN TAB ── -->
-    <div id="view-admin" style="display:none;">
-      <div class="page-header"><div><h2 class="page-title">Admin Panel</h2><p class="page-sub">User management and system overview</p></div></div>
-      <div class="report-section"><h3 class="section-heading"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Registered Users</h3>
-        <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Shop</th><th>Role</th><th>Phone</th><th>Joined</th></tr></thead><tbody id="admin-users-tbody"></tbody></table></div>
-      </div>
-      <div class="report-section"><h3 class="section-heading"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>Role Access Matrix</h3>
-        <div class="table-wrap"><table><thead><tr><th>Feature</th><th>Admin</th><th>Owner</th><th>Manager</th><th>Barista</th><th>Staff</th></tr></thead><tbody id="role-matrix-tbody"></tbody></table></div>
-      </div>
-    </div>
-
-  </main>
-</div>
-
-<!-- ═══ MODALS ════════════════════════════════════════════ -->
-<div class="modal-backdrop" id="move-modal">
-  <div class="modal move-modal">
-    <div class="modal-header"><h3 class="modal-title">Update Stock</h3><button class="modal-close" onclick="closeMove()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-    <div class="move-item-info"><div class="move-item-name" id="move-item-name">—</div><div class="move-current-qty" id="move-current-qty">Current: 0</div></div>
-    <div class="move-type-grid">
-      <label class="move-type-btn"><input type="radio" name="move-type" value="add" checked onchange="updateMovePreview()" /><span class="mtb-inner add"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>Add Stock</span></label>
-      <label class="move-type-btn"><input type="radio" name="move-type" value="sell" onchange="updateMovePreview()" /><span class="mtb-inner sell"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Sold</span></label>
-      <label class="move-type-btn"><input type="radio" name="move-type" value="use" onchange="updateMovePreview()" /><span class="mtb-inner use"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Used</span></label>
-      <label class="move-type-btn"><input type="radio" name="move-type" value="remove" onchange="updateMovePreview()" /><span class="mtb-inner remove"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>Remove</span></label>
-    </div>
-    <div class="form-group" style="margin-top:1.2rem;"><label>Quantity *</label><input type="number" id="move-qty" placeholder="0" min="1" oninput="updateMovePreview()" /></div>
-    <div class="form-group"><label>Note (optional)</label><input type="text" id="move-note" placeholder="e.g. Morning restock, Table 5 order…" /></div>
-    <div class="move-preview" id="move-preview">New quantity: —</div>
-    <div class="modal-actions"><button class="btn-ghost" onclick="closeMove()">Cancel</button><button class="btn-primary" onclick="confirmMove()">Confirm</button></div>
+    <div class="hero-note anim" style="animation-delay:0.2s">No credit card. Set up your first shop in under two minutes.</div>
   </div>
-</div>
 
-<div class="modal-backdrop" id="item-modal">
-  <div class="modal">
-    <div class="modal-header"><h3 class="modal-title" id="m-title">Add Item</h3><button class="modal-close" onclick="closeModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-    <div class="form-group"><label>Item Name *</label><input type="text" id="f-name" placeholder="e.g. Arabica Beans" /></div>
-    <div class="form-row">
-      <div class="form-group"><label>Category *</label><select id="f-cat"><option value="">Select…</option><option value="beans">Beans</option><option value="dairy">Dairy</option><option value="syrups">Syrups</option><option value="equipment">Equipment</option><option value="supplies">Supplies</option><option value="other">Other</option></select></div>
-      <div class="form-group"><label>Unit</label><select id="f-unit"><option value="kg">kg</option><option value="g">g</option><option value="L">L</option><option value="mL">mL</option><option value="pcs">pcs</option><option value="bag">bag</option><option value="box">box</option><option value="bottle">bottle</option><option value="pack">pack</option><option value="can">can</option></select></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label>Initial Quantity *</label><input type="number" id="f-qty" placeholder="0" min="0" /></div>
-      <div class="form-group"><label>Low-Stock Alert At</label><input type="number" id="f-thresh" placeholder="5" min="0" /></div>
-    </div>
-    <div class="form-group"><label>Unit Price (₱)</label><input type="number" id="f-price" placeholder="0.00" min="0" step="0.01" /></div>
-    <div class="form-group"><label>Notes</label><textarea id="f-notes" placeholder="Additional notes…"></textarea></div>
-    <div class="modal-actions"><button class="btn-ghost" onclick="closeModal()">Cancel</button><button class="btn-primary" onclick="saveItem()">Save Item</button></div>
-  </div>
-</div>
-
-<div class="modal-backdrop" id="del-modal">
-  <div class="confirm-box">
-    <div class="confirm-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c62828" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></div>
-    <h3>Remove Item?</h3><p id="del-msg">This item will be permanently removed.</p>
-    <div class="confirm-actions"><button class="btn-ghost" onclick="closeDelModal()">Cancel</button><button class="btn-confirm-del" onclick="confirmDel()">Yes, Remove</button></div>
-  </div>
-</div>
-
-<div class="modal-backdrop" id="profile-modal">
-  <div class="modal profile-modal">
-    <div class="modal-header"><h3 class="modal-title">My Profile</h3><button class="modal-close" onclick="closeProfile()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-    <div class="profile-avatar-row"><div class="profile-avatar" id="prof-avatar">J</div><div><div class="profile-name" id="prof-name">—</div><div class="profile-role-badge" id="prof-role-badge">—</div></div></div>
-    <div class="profile-info-grid">
-      <div class="profile-info-item"><span class="pi-label">Shop</span><span class="pi-val" id="prof-shop">—</span></div>
-      <div class="profile-info-item"><span class="pi-label">Email</span><span class="pi-val" id="prof-email">—</span></div>
-      <div class="profile-info-item"><span class="pi-label">Phone</span><span class="pi-val" id="prof-phone">—</span></div>
-      <div class="profile-info-item"><span class="pi-label">Role</span><span class="pi-val" id="prof-role">—</span></div>
-      <div class="profile-info-item"><span class="pi-label">Member Since</span><span class="pi-val" id="prof-since">—</span></div>
-    </div>
-    <div class="profile-divider"></div>
-    <h4 class="profile-edit-title">Edit Profile</h4>
-    <div class="form-row">
-      <div class="form-group"><label>Full Name</label><input type="text" id="pe-name" /></div>
-      <div class="form-group"><label>Shop Name</label><input type="text" id="pe-shop" /></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label>Phone</label><input type="tel" id="pe-phone" /></div>
-      <div class="form-group"><label>Role</label><select id="pe-role"><option value="Admin">Admin</option><option value="Owner">Owner</option><option value="Manager">Manager</option><option value="Barista">Barista</option><option value="Staff">Staff</option></select></div>
-    </div>
-    <div class="modal-actions"><button class="btn-ghost" onclick="closeProfile()">Cancel</button><button class="btn-primary" onclick="saveProfile()">Save Changes</button></div>
-  </div>
-</div>
-
-<div class="modal-backdrop" id="tos-modal">
-  <div class="modal tos-modal">
-    <div class="modal-header"><h3 class="modal-title">Terms &amp; Conditions</h3><button class="modal-close" onclick="closeTOS()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-    <div class="tos-body">
-      <p class="tos-effective">Effective Date: January 1, 2025</p>
-      <h4>1. Acceptance of Terms</h4><p>By creating an account and using OXIS ("the System"), you agree to be bound by these Terms and Conditions.</p>
-      <h4>2. Use of the System</h4><p>OXIS is a coffee inventory management system intended for authorized business users.</p>
-      <h4>3. Account Responsibility</h4><p>You are responsible for maintaining the confidentiality of your account credentials.</p>
-      <h4>4. Data &amp; Privacy</h4><p>All inventory data you enter is stored securely in the cloud via Firebase Firestore.</p>
-      <h4>5. Intellectual Property</h4><p>The OXIS name, logo, and system design are the intellectual property of OXIS.</p>
-      <h4>6. Limitation of Liability</h4><p>OXIS is provided "as is" without warranties of any kind.</p>
-      <h4>7. Prohibited Activities</h4><p>You agree not to use the System for any fraudulent or illegal purpose.</p>
-      <h4>8. Modifications</h4><p>We reserve the right to modify these Terms at any time.</p>
-      <h4>9. Governing Law</h4><p>These Terms shall be governed by the laws of the Republic of the Philippines.</p>
-      <h4>10. Contact</h4><p>For questions about these Terms, please contact us at <strong>support@oxis.ph</strong>.</p>
-    </div>
-    <div class="tos-actions"><button class="btn-primary" onclick="acceptTOS()">I Understand &amp; Accept</button></div>
-  </div>
-</div>
-
-<!-- ═══ PDF PREVIEW MODAL ════════════════════════════════ -->
-<div id="pdf-preview-modal">
-  <div class="pdf-preview-sheet">
-    <div class="pdf-preview-toolbar">
-      <div class="pdf-preview-toolbar-left">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c17f3a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        <div>
-          <div class="pdf-preview-title">Sales Report — PDF Preview</div>
-          <div class="pdf-preview-subtitle" id="pdf-preview-subtitle">OXIS Coffee · Loading…</div>
-        </div>
+  <div class="ticket-stage anim" style="animation-delay:0.1s">
+    <div class="ticket">
+      <div class="ticket-top">
+        <span class="ticket-tag">Live stock</span>
+        <span class="ticket-lot">Updated 2m ago</span>
       </div>
-      <div class="pdf-preview-actions">
-        <button class="btn-pdf-print" onclick="triggerPrint()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
-          Print
-        </button>
-        <button class="btn-pdf-download" onclick="triggerPrint()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-          Download PDF
-        </button>
-        <button class="btn-pdf-close" onclick="closePdfPreview()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-        </button>
+      <div class="ticket-name">Arabica Beans</div>
+      <div class="ticket-cat">Beans · Whole bean, dark roast</div>
+      <div class="ticket-row">
+        <span class="ticket-qty">12.4 <span class="ticket-unit">kg</span></span>
       </div>
-    </div>
-    <div class="pdf-preview-body">
-      <div class="pdf-paper" id="pdf-paper-content"></div>
+      <div class="ticket-bar-track"><div class="ticket-bar-fill"></div></div>
+      <div class="ticket-foot">
+        <span class="pill pill-ok">In stock</span>
+        <span class="ticket-updated">Alert at 5kg</span>
+      </div>
+      <div class="ticket-log">
+        <div class="log-row"><span><span class="log-tag log-sell">SOLD</span> Table 5 order</span><span>−0.6kg</span></div>
+        <div class="log-row"><span><span class="log-tag log-add">ADD</span> Morning restock</span><span>+8kg</span></div>
+      </div>
     </div>
   </div>
-</div>
+</header>
 
-<!-- ═══ PRINT ROOT ════════════════════════════════════════ -->
-<div id="print-report-root"></div>
+<section class="section wrap">
+  <div class="section-head">
+    <span class="eyebrow">What OXIS does</span>
+    <h2>Everything a small shop needs to run inventory — nothing it doesn't.</h2>
+  </div>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div>
+      <h3>Real-time stock</h3>
+      <p>Add, sell, use, or remove an item and counts update instantly across every device your team is on.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg></div>
+      <h3>Low-stock alerts</h3>
+      <p>Set a threshold per item and see it flagged before you run out mid-shift, not after.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+      <h3>Role-based access</h3>
+      <p>Owners, managers, and baristas each see exactly what their role needs — no more, no less.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+      <h3>One-tap reports</h3>
+      <p>Generate a sales report as a clean PDF, ready to print for the owner or send to your accountant.</p>
+    </div>
+  </div>
+</section>
 
-<div class="toast-wrap" id="toast-wrap"></div>
-<script src="app.js"></script>
+<section class="section wrap" id="how">
+  <div class="section-head">
+    <span class="eyebrow">Getting started</span>
+    <h2>Three steps, and your storeroom stops being a guessing game.</h2>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <span class="step-num">01</span>
+      <h3>Add your items</h3>
+      <p>List beans, dairy, syrups, equipment, and supplies with a starting count and a low-stock threshold.</p>
+    </div>
+    <div class="step">
+      <span class="step-num">02</span>
+      <h3>Log every move</h3>
+      <p>Mark stock as added, sold, used, or removed as your day happens — it takes seconds per entry.</p>
+    </div>
+    <div class="step">
+      <span class="step-num">03</span>
+      <h3>Track and report</h3>
+      <p>Watch trends in Activity and export a sales report whenever you need one.</p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap" style="padding-bottom:5rem;">
+  <div class="cta-band">
+    <div>
+      <h2>Stop guessing what's left in the back room.</h2>
+      <p>Set up your shop's inventory in OXIS and see your first stock report today.</p>
+    </div>
+    <a class="btn btn-dark" href="app.html">Create free account</a>
+  </div>
+</section>
+
+<footer class="footer wrap">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <svg width="16" height="16" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="var(--accent)" stroke-width="2"/><path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/><circle cx="14" cy="14" r="2" fill="var(--accent)"/></svg>
+      <span>OXIS · Coffee inventory, sorted</span>
+    </div>
+    <div class="footer-links">
+      <a href="app.html">Log in</a>
+      <a href="app.html">Get started</a>
+    </div>
+  </div>
+</footer>
+
 </body>
 </html>
