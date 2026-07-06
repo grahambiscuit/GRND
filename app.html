@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OXIS — Coffee Inventory System</title>
+<title>GRND — Coffee Inventory System</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="staggered-menu.css">
@@ -265,7 +265,7 @@
     <circle cx="14" cy="14" r="2" fill="#c17f3a"/>
   </svg>
   <div class="fb-spinner"></div>
-  <div class="fb-loading-text">Loading OXIS…</div>
+  <div class="fb-loading-text">Loading GRND…</div>
 </div>
 
 <!-- ═══ AUTH ═══════════════════════════════════════════ -->
@@ -276,7 +276,7 @@
       <div class="auth-logo-mark">
         <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="var(--accent)" stroke-width="2"/><path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/><circle cx="14" cy="14" r="2" fill="var(--accent)"/></svg>
       </div>
-      <span class="brand-name">OXIS</span>
+      <span class="brand-name">GRND</span>
       <span class="brand-tag">Coffee Inventory System</span>
     </div>
     <div id="login-panel">
@@ -290,10 +290,10 @@
     </div>
     <div id="signup-panel" style="display:none;">
       <h2 class="auth-heading">Create account</h2>
-      <p class="auth-sub">Set up your OXIS workspace</p>
+      <p class="auth-sub">Set up your GRND workspace</p>
       <div class="err-box" id="su-err"></div>
       <div class="form-group"><label>Full Name</label><input type="text" id="su-name" placeholder="Juan dela Cruz" /></div>
-      <div class="form-group"><label>Shop Name</label><input type="text" id="su-shop" placeholder="e.g. OXIS Coffee" /></div>
+      <div class="form-group"><label>Shop Name</label><input type="text" id="su-shop" placeholder="e.g. GRND Coffee" /></div>
       <div class="form-group"><label>Email</label><input type="email" id="su-email" placeholder="you@coffeeshop.com" /></div>
       <div class="form-group"><label>Phone Number</label><input type="tel" id="su-phone" placeholder="+63 9XX XXX XXXX" /></div>
       <div class="form-group"><label>Role / Position</label>
@@ -323,7 +323,7 @@
   <header class="app-header">
     <div class="header-brand">
       <svg width="20" height="20" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="var(--accent)" stroke-width="2"/><path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/><circle cx="14" cy="14" r="2" fill="var(--accent)"/></svg>
-      OXIS <small>Coffee Inventory System</small>
+      GRND <small>Coffee Inventory System</small>
     </div>
     <div class="header-right">
       <button class="sm-toggle-btn" id="sm-toggle-btn" onclick="toggleStaggeredMenu()" aria-label="Open menu" aria-expanded="false" aria-controls="sm-panel">
@@ -348,7 +348,7 @@
             <svg width="20" height="20" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="var(--accent)" stroke-width="2"/><path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/><circle cx="14" cy="14" r="2" fill="var(--accent)"/></svg>
           </div>
           <div>
-            <div class="sm-panel-brand-name">OXIS</div>
+            <div class="sm-panel-brand-name">GRND</div>
             <div class="sm-panel-brand-tag">Coffee Inventory System</div>
           </div>
         </div>
@@ -609,16 +609,16 @@
     <div class="modal-header"><h3 class="modal-title">Terms &amp; Conditions</h3><button class="modal-close" onclick="closeTOS()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
     <div class="tos-body">
       <p class="tos-effective">Effective Date: January 1, 2025</p>
-      <h4>1. Acceptance of Terms</h4><p>By creating an account and using OXIS ("the System"), you agree to be bound by these Terms and Conditions.</p>
-      <h4>2. Use of the System</h4><p>OXIS is a coffee inventory management system intended for authorized business users.</p>
+      <h4>1. Acceptance of Terms</h4><p>By creating an account and using GRND ("the System"), you agree to be bound by these Terms and Conditions.</p>
+      <h4>2. Use of the System</h4><p>GRND is a coffee inventory management system intended for authorized business users.</p>
       <h4>3. Account Responsibility</h4><p>You are responsible for maintaining the confidentiality of your account credentials.</p>
       <h4>4. Data &amp; Privacy</h4><p>All inventory data you enter is stored securely in the cloud via Firebase Firestore.</p>
-      <h4>5. Intellectual Property</h4><p>The OXIS name, logo, and system design are the intellectual property of OXIS.</p>
-      <h4>6. Limitation of Liability</h4><p>OXIS is provided "as is" without warranties of any kind.</p>
+      <h4>5. Intellectual Property</h4><p>The GRND name, logo, and system design are the intellectual property of GRND.</p>
+      <h4>6. Limitation of Liability</h4><p>GRND is provided "as is" without warranties of any kind.</p>
       <h4>7. Prohibited Activities</h4><p>You agree not to use the System for any fraudulent or illegal purpose.</p>
       <h4>8. Modifications</h4><p>We reserve the right to modify these Terms at any time.</p>
       <h4>9. Governing Law</h4><p>These Terms shall be governed by the laws of the Republic of the Philippines.</p>
-      <h4>10. Contact</h4><p>For questions about these Terms, please contact us at <strong>support@oxis.ph</strong>.</p>
+      <h4>10. Contact</h4><p>For questions about these Terms, please contact us at <strong>support@grnd.ph</strong>.</p>
     </div>
     <div class="tos-actions"><button class="btn-primary" onclick="acceptTOS()">I Understand &amp; Accept</button></div>
   </div>
@@ -632,7 +632,7 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c17f3a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         <div>
           <div class="pdf-preview-title">Sales Report — PDF Preview</div>
-          <div class="pdf-preview-subtitle" id="pdf-preview-subtitle">OXIS Coffee · Loading…</div>
+          <div class="pdf-preview-subtitle" id="pdf-preview-subtitle">GRND Coffee · Loading…</div>
         </div>
       </div>
       <div class="pdf-preview-actions">
