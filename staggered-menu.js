@@ -1,6 +1,6 @@
 /* ═══ STAGGERED MENU — vanilla JS + GSAP port ═════════════
    Adapted from the React Bits StaggeredMenu component so it
-   runs in OXIS's plain HTML/JS app (no build step / no React).
+   runs in GRND's plain HTML/JS app (no build step / no React).
    All menu items keep their original ids (tab-inventory, etc.)
    so the rest of app.js keeps working unchanged. */
 
