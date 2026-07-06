@@ -1,6 +1,6 @@
-/* ═══ STAGGERED MENU — OXIS ═══════════════════════════════
+/* ═══ STAGGERED MENU — GRND ═══════════════════════════════
    Vanilla JS + GSAP port of the React Bits StaggeredMenu,
-   restyled to use OXIS's own design tokens (see styles.css)
+   restyled to use GRND's own design tokens (see styles.css)
    so it matches light/dark theme automatically. */
 
 .header-right { display: flex; align-items: center; }
