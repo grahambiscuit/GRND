@@ -1241,10 +1241,8 @@ function buildPdfHTML(data) {
   return `<div class="pr-wrap">
     <div class="pr-header">
       <div class="pr-brand">
-        <div class="pr-logo-mark">
-          <img src="images/logo-mark.png" width="18" height="18" alt="GRND" style="object-fit:contain;">
-        </div>
-        <div><div class="pr-brand-name">GRND</div><div class="pr-brand-sub">Coffee Inventory System</div></div>
+        <img src="images/logo-full.png" style="height:26px;width:auto;object-fit:contain;" alt="GRND">
+        <div><div class="pr-brand-sub">Coffee Inventory System</div></div>
       </div>
       <div class="pr-report-meta"><div class="pr-report-title">Sales Report</div><div class="pr-report-period">${periodLabel(period)}</div></div>
     </div>
@@ -1293,8 +1291,8 @@ function buildPdfHTML(data) {
     <div class="pr-insights">${insightsHTML}</div>
     <div class="pr-footer">
       <div class="pr-footer-left"><div class="pr-confidential">Confidential</div><div>${esc(name)} · ${esc(role)} · ${esc(shop)}</div></div>
-      <div><img src="images/logo-mark.png" width="22" height="22" alt="GRND" style="object-fit:contain;"></div>
-      <div class="pr-footer-right"><div class="pr-footer-brand">GRND</div><div>Coffee Inventory System</div><div>Generated ${now.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}</div></div>
+      <div><img src="images/logo-full.png" style="height:22px;width:auto;object-fit:contain;" alt="GRND"></div>
+      <div class="pr-footer-right"><div>Coffee Inventory System</div><div>Generated ${now.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}</div></div>
     </div>
   </div>`;
 }
