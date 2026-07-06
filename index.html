@@ -61,11 +61,9 @@
     display:flex;align-items:center;justify-content:space-between;
   }
   .nav-brand{display:flex;align-items:center;gap:0.55rem;}
-  .nav-logo-chip{
-    display:inline-flex;align-items:center;
-    background:rgba(251,246,238,0.92);
-    padding:0.4rem 0.7rem;border-radius:9px;
-    box-shadow:0 4px 14px rgba(0,0,0,0.18);
+  .nav-logo-img{
+    height:38px;width:auto;object-fit:contain;display:block;
+    filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55)) drop-shadow(0 0 14px rgba(0,0,0,0.35));
   }
   .nav-cta{
     display:flex;align-items:center;gap:1.6rem;
@@ -241,11 +239,25 @@
   .cta-band p{color:#c9beae;margin-top:0.5rem;max-width:440px;font-size:0.95rem;}
 
   /* ── FOOTER ──────────────────────────────────── */
-  .footer{border-top:1px solid var(--border);padding:2.4rem 0;}
-  .footer-inner{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;}
-  .footer-brand{display:flex;align-items:center;gap:0.5rem;color:var(--ink2);font-size:0.85rem;}
-  .footer-links{display:flex;gap:1.4rem;font-size:0.85rem;color:var(--ink3);}
-  .footer-links a:hover{color:var(--accent-h);}
+  .footer{border-top:1px solid var(--border);padding:3.2rem 0 2rem;}
+  .footer-grid{
+    display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:2.5rem;
+    padding-bottom:2.2rem;
+  }
+  .footer-col-brand p{font-size:0.85rem;color:var(--ink2);line-height:1.6;max-width:280px;margin-top:0.9rem;}
+  .footer-col h4{
+    font-size:0.7rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;
+    color:var(--ink3);margin-bottom:0.9rem;
+  }
+  .footer-col ul{list-style:none;display:flex;flex-direction:column;gap:0.6rem;}
+  .footer-col ul li{font-size:0.88rem;color:var(--ink2);}
+  .footer-col ul a{color:var(--ink2);}
+  .footer-col ul a:hover{color:var(--accent-h);}
+  .footer-bottom{
+    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.6rem;
+    padding-top:1.6rem;border-top:1px solid var(--border);
+    font-size:0.8rem;color:var(--ink3);
+  }
 
   @media (max-width:900px){
     .hero-inner{grid-template-columns:1fr;padding-top:6.5rem;}
@@ -253,6 +265,7 @@
     .feature-grid{grid-template-columns:repeat(2,1fr);}
     .steps{grid-template-columns:1fr;}
     .cta-band{flex-direction:column;align-items:flex-start;}
+    .footer-grid{grid-template-columns:1fr;gap:1.8rem;}
   }
   @media (prefers-reduced-motion: reduce){
     .anim,.ticket-bar-fill{animation:none !important;opacity:1 !important;transform:none !important;width:62% !important;}
@@ -264,9 +277,7 @@
 <nav class="nav">
   <div class="nav-inner">
     <div class="nav-brand">
-      <div class="nav-logo-chip">
-        <img src="images/logo-full.png" style="height:38px;width:auto;object-fit:contain;display:block;" alt="GRND">
-      </div>
+      <img src="images/logo-full.png" class="nav-logo-img" alt="GRND">
     </div>
     <div class="nav-cta">
       <a class="nav-link" href="#how">How it works</a>
@@ -385,15 +396,36 @@
 </section>
 
 <footer class="footer wrap">
-  <div class="footer-inner">
-    <div class="footer-brand">
-      <img src="images/logo-full.png" style="height:20px;width:auto;object-fit:contain;" alt="GRND">
-      <span>Coffee inventory, sorted</span>
+  <div class="footer-grid">
+    <div class="footer-col footer-col-brand">
+      <img src="images/logo-full.png" style="height:34px;width:auto;object-fit:contain;" alt="GRND">
+      <p>Simple, real-time inventory tracking built for small coffee shops.</p>
     </div>
-    <div class="footer-links">
-      <a href="app.html">Log in</a>
-      <a href="app.html">Get started</a>
+
+    <div class="footer-col">
+      <h4>Features</h4>
+      <ul>
+        <li>Real-time stock tracking</li>
+        <li>Low-stock alerts</li>
+        <li>Role-based access</li>
+        <li>One-tap sales reports</li>
+        <li>Daily activity log</li>
+      </ul>
     </div>
+
+    <div class="footer-col">
+      <h4>Product</h4>
+      <ul>
+        <li><a href="#how">How it works</a></li>
+        <li><a href="app.html">Log in</a></li>
+        <li><a href="app.html">Get started</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <span>© 2026 GRND. All rights reserved.</span>
+    <span>Coffee inventory, sorted.</span>
   </div>
 </footer>
 
