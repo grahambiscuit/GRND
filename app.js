@@ -1242,7 +1242,7 @@ function buildPdfHTML(data) {
     <div class="pr-header">
       <div class="pr-brand">
         <div class="pr-logo-mark">
-          <svg width="18" height="18" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="#c17f3a" stroke-width="2"/><path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="#c17f3a" stroke-width="1.8" stroke-linecap="round"/><circle cx="14" cy="14" r="2" fill="#c17f3a"/></svg>
+          <img src="images/logo-mark.png" width="18" height="18" alt="GRND" style="object-fit:contain;">
         </div>
         <div><div class="pr-brand-name">GRND</div><div class="pr-brand-sub">Coffee Inventory System</div></div>
       </div>
@@ -1293,7 +1293,7 @@ function buildPdfHTML(data) {
     <div class="pr-insights">${insightsHTML}</div>
     <div class="pr-footer">
       <div class="pr-footer-left"><div class="pr-confidential">Confidential</div><div>${esc(name)} · ${esc(role)} · ${esc(shop)}</div></div>
-      <div><svg width="22" height="22" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="#c17f3a" stroke-width="1.5"/><path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="#c17f3a" stroke-width="1.5" stroke-linecap="round"/><circle cx="14" cy="14" r="2" fill="#c17f3a"/></svg></div>
+      <div><img src="images/logo-mark.png" width="22" height="22" alt="GRND" style="object-fit:contain;"></div>
       <div class="pr-footer-right"><div class="pr-footer-brand">GRND</div><div>Coffee Inventory System</div><div>Generated ${now.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}</div></div>
     </div>
   </div>`;
