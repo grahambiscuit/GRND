@@ -64,7 +64,9 @@
   .nav-logo-img{
     height:38px;width:auto;object-fit:contain;display:block;
     filter:drop-shadow(0 2px 6px rgba(0,0,0,0.55)) drop-shadow(0 0 14px rgba(0,0,0,0.35));
+    transition:filter 0.35s ease;
   }
+  .nav.scrolled .nav-logo-img{ filter:none; }
   .nav-cta{
     display:flex;align-items:center;gap:1.6rem;
   }
@@ -212,6 +214,48 @@
   .feature-card h3{font-size:1rem;font-weight:700;margin-bottom:0.45rem;}
   .feature-card p{font-size:0.88rem;color:var(--ink2);line-height:1.55;}
 
+  /* ── APP PREVIEW MOCKUP ─────────────────────── */
+  .app-preview{
+    background:var(--bg2);border:1px solid var(--border);border-radius:18px;
+    box-shadow:0 30px 70px rgba(36,26,18,0.1);
+    overflow:hidden;
+  }
+  .browser-chrome{
+    display:flex;align-items:center;gap:0.5rem;
+    padding:0.8rem 1.1rem;border-bottom:1px solid var(--border);
+    background:var(--bg);
+  }
+  .chrome-dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+  .chrome-url{
+    margin-left:0.8rem;font-size:0.72rem;color:var(--ink3);
+    background:var(--bg2);border:1px solid var(--border);border-radius:6px;
+    padding:0.2rem 0.7rem;
+  }
+  .mock-body{padding:1.6rem;}
+  .mock-tabs{display:flex;gap:1.6rem;border-bottom:1px solid var(--border);margin-bottom:1.3rem;padding-bottom:0.9rem;}
+  .mock-tab{font-size:0.82rem;font-weight:600;color:var(--ink3);}
+  .mock-tab.active{color:var(--accent-h);}
+  .mock-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:0.9rem;margin-bottom:1.3rem;}
+  .mock-stat{
+    background:var(--bg);border:1px solid var(--border);border-radius:11px;
+    padding:0.9rem 1rem;display:flex;flex-direction:column;gap:0.3rem;
+  }
+  .mock-stat-label{font-size:0.68rem;color:var(--ink3);text-transform:uppercase;letter-spacing:0.08em;}
+  .mock-stat-value{font-family:var(--serif);font-size:1.5rem;font-weight:600;color:var(--ink);}
+  .mock-stat-warn .mock-stat-value{color:var(--accent-h);}
+  .mock-table{border:1px solid var(--border);border-radius:11px;overflow:hidden;}
+  .mock-row{
+    display:grid;grid-template-columns:2fr 1.2fr 1fr 1.2fr;align-items:center;
+    padding:0.7rem 1rem;font-size:0.82rem;color:var(--ink2);
+    border-bottom:1px solid var(--border);
+  }
+  .mock-row:last-child{border-bottom:none;}
+  .mock-row-head{background:var(--bg);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink3);font-weight:700;}
+  .mock-row-low{background:rgba(193,127,58,0.05);}
+  .mock-badge{font-size:0.7rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:99px;justify-self:start;}
+  .mock-ok{background:rgba(95,122,82,0.14);color:var(--ok, #5f7a52);}
+  .mock-low{background:var(--accent-soft);color:var(--accent-h);}
+
   /* ── HOW IT WORKS ────────────────────────────── */
   .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:1.4rem;}
   .step{position:relative;padding-left:0.1rem;}
@@ -266,6 +310,9 @@
     .steps{grid-template-columns:1fr;}
     .cta-band{flex-direction:column;align-items:flex-start;}
     .footer-grid{grid-template-columns:1fr;gap:1.8rem;}
+    .mock-stats{grid-template-columns:1fr;}
+    .mock-row{grid-template-columns:1.6fr 1fr 1fr;}
+    .mock-row span:nth-child(2){display:none;}
   }
   @media (prefers-reduced-motion: reduce){
     .anim,.ticket-bar-fill{animation:none !important;opacity:1 !important;transform:none !important;width:62% !important;}
@@ -357,6 +404,62 @@
       <div class="feature-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
       <h3>One-tap reports</h3>
       <p>Generate a sales report as a clean PDF, ready to print for the owner or send to your accountant.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section wrap">
+  <div class="section-head">
+    <span class="eyebrow">See it in action</span>
+    <h2>This is what your storeroom looks like from now on.</h2>
+  </div>
+  <div class="app-preview">
+    <div class="browser-chrome">
+      <span class="chrome-dot" style="background:#e5675f;"></span>
+      <span class="chrome-dot" style="background:#e6b95c;"></span>
+      <span class="chrome-dot" style="background:#6fb37a;"></span>
+      <span class="chrome-url">grnd.app/inventory</span>
+    </div>
+    <div class="mock-body">
+      <div class="mock-tabs">
+        <span class="mock-tab active">Inventory</span>
+        <span class="mock-tab">Sales</span>
+        <span class="mock-tab">Reports</span>
+        <span class="mock-tab">Activity</span>
+      </div>
+
+      <div class="mock-stats">
+        <div class="mock-stat">
+          <span class="mock-stat-label">Total items</span>
+          <span class="mock-stat-value">86</span>
+        </div>
+        <div class="mock-stat mock-stat-warn">
+          <span class="mock-stat-label">Low stock</span>
+          <span class="mock-stat-value">3</span>
+        </div>
+        <div class="mock-stat">
+          <span class="mock-stat-label">Today's sales</span>
+          <span class="mock-stat-value">₱4,120</span>
+        </div>
+      </div>
+
+      <div class="mock-table">
+        <div class="mock-row mock-row-head">
+          <span>Item</span><span>Category</span><span>Qty</span><span>Status</span>
+        </div>
+        <div class="mock-row">
+          <span>Arabica Beans</span><span>Beans</span><span>12.4 kg</span><span class="mock-badge mock-ok">In stock</span>
+        </div>
+        <div class="mock-row mock-row-low">
+          <span>Whole Milk</span><span>Dairy</span><span>3.1 L</span><span class="mock-badge mock-low">Low stock</span>
+        </div>
+        <div class="mock-row">
+          <span>Vanilla Syrup</span><span>Syrups</span><span>5 btl</span><span class="mock-badge mock-ok">In stock</span>
+        </div>
+        <div class="mock-row mock-row-low">
+          <span>Paper Cups (12oz)</span><span>Supplies</span><span>40 pcs</span><span class="mock-badge mock-low">Low stock</span>
+        </div>
+      </div>
     </div>
   </div>
 </section>
