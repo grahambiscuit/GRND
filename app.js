@@ -161,13 +161,13 @@ async function seedInventoryToFirestore(uid) {
 
 // ── THEME ─────────────────────────────────────────────────
 function initTheme() {
-  const saved = localStorage.getItem('oxis_theme') || 'light';
+  const saved = localStorage.getItem('grnd_theme') || 'light';
   applyTheme(saved);
 }
 
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('oxis_theme', theme);
+  localStorage.setItem('grnd_theme', theme);
   const moon = document.getElementById('icon-moon');
   const sun  = document.getElementById('icon-sun');
   if (moon) moon.style.display = theme === 'dark' ? 'none' : '';
@@ -1164,7 +1164,7 @@ function sparklineSVG(data, w, h) {
 
 function buildPdfHTML(data) {
   const now  = new Date();
-  const shop = user?.shop || 'OXIS Coffee';
+  const shop = user?.shop || 'GRND Coffee';
   const name = user?.name || '—';
   const role = user?.role || 'Staff';
   const { totalRev, totalUnits, totalTxn, avgPerTxn, items, byCat, byDay, days, period } = data;
@@ -1244,7 +1244,7 @@ function buildPdfHTML(data) {
         <div class="pr-logo-mark">
           <svg width="18" height="18" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="#c17f3a" stroke-width="2"/><path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="#c17f3a" stroke-width="1.8" stroke-linecap="round"/><circle cx="14" cy="14" r="2" fill="#c17f3a"/></svg>
         </div>
-        <div><div class="pr-brand-name">OXIS</div><div class="pr-brand-sub">Coffee Inventory System</div></div>
+        <div><div class="pr-brand-name">GRND</div><div class="pr-brand-sub">Coffee Inventory System</div></div>
       </div>
       <div class="pr-report-meta"><div class="pr-report-title">Sales Report</div><div class="pr-report-period">${periodLabel(period)}</div></div>
     </div>
@@ -1294,7 +1294,7 @@ function buildPdfHTML(data) {
     <div class="pr-footer">
       <div class="pr-footer-left"><div class="pr-confidential">Confidential</div><div>${esc(name)} · ${esc(role)} · ${esc(shop)}</div></div>
       <div><svg width="22" height="22" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" stroke="#c17f3a" stroke-width="1.5"/><path d="M9 14c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5" stroke="#c17f3a" stroke-width="1.5" stroke-linecap="round"/><circle cx="14" cy="14" r="2" fill="#c17f3a"/></svg></div>
-      <div class="pr-footer-right"><div class="pr-footer-brand">OXIS</div><div>Coffee Inventory System</div><div>Generated ${now.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}</div></div>
+      <div class="pr-footer-right"><div class="pr-footer-brand">GRND</div><div>Coffee Inventory System</div><div>Generated ${now.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}</div></div>
     </div>
   </div>`;
 }
@@ -1305,7 +1305,7 @@ function openPdfPreview() {
   const html   = buildPdfHTML(data);
   document.getElementById('pdf-paper-content').innerHTML = html;
   document.getElementById('print-report-root').innerHTML = html;
-  document.getElementById('pdf-preview-subtitle').textContent = `${user?.shop || 'OXIS Coffee'} · ${periodLabel(period)}`;
+  document.getElementById('pdf-preview-subtitle').textContent = `${user?.shop || 'GRND Coffee'} · ${periodLabel(period)}`;
   document.getElementById('pdf-preview-modal').classList.add('show');
 }
 
