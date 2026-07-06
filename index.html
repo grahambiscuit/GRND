@@ -61,15 +61,12 @@
     display:flex;align-items:center;justify-content:space-between;
   }
   .nav-brand{display:flex;align-items:center;gap:0.55rem;}
-  .nav-logo{
-    width:34px;height:34px;border-radius:10px;
-    background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.35);
-    display:flex;align-items:center;justify-content:center;
-    transition:background 0.35s ease, border-color 0.35s ease;
+  .nav-logo-chip{
+    display:inline-flex;align-items:center;
+    background:rgba(251,246,238,0.92);
+    padding:0.4rem 0.7rem;border-radius:9px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.18);
   }
-  .nav.scrolled .nav-logo{background:var(--accent-soft);border-color:rgba(193,127,58,0.3);}
-  .nav-name{font-weight:700;letter-spacing:0.1em;font-size:1.05rem;color:#fff;transition:color 0.35s ease;}
-  .nav.scrolled .nav-name{color:var(--ink);}
   .nav-cta{
     display:flex;align-items:center;gap:1.6rem;
   }
@@ -267,10 +264,9 @@
 <nav class="nav">
   <div class="nav-inner">
     <div class="nav-brand">
-      <div class="nav-logo">
-        <img src="images/logo-mark.png" width="20" height="20" alt="GRND" style="object-fit:contain;">
+      <div class="nav-logo-chip">
+        <img src="images/logo-full.png" style="height:26px;width:auto;object-fit:contain;display:block;" alt="GRND">
       </div>
-      <span class="nav-name">GRND</span>
     </div>
     <div class="nav-cta">
       <a class="nav-link" href="#how">How it works</a>
@@ -391,8 +387,8 @@
 <footer class="footer wrap">
   <div class="footer-inner">
     <div class="footer-brand">
-      <img src="images/logo-mark.png" width="16" height="16" alt="GRND" style="object-fit:contain;">
-      <span>GRND · Coffee inventory, sorted</span>
+      <img src="images/logo-full.png" style="height:20px;width:auto;object-fit:contain;" alt="GRND">
+      <span>Coffee inventory, sorted</span>
     </div>
     <div class="footer-links">
       <a href="app.html">Log in</a>
