@@ -1,262 +1,144 @@
-/* ═══ STAGGERED MENU — GRND ═══════════════════════════════
-   Vanilla JS + GSAP port of the React Bits StaggeredMenu,
-   restyled to use GRND's own design tokens (see styles.css)
-   so it matches light/dark theme automatically. */
+/* ═══ STAGGERED MENU — vanilla JS + GSAP port ═════════════
+   Adapted from the React Bits StaggeredMenu component so it
+   runs in GRND's plain HTML/JS app (no build step / no React).
+   All menu items keep their original ids (tab-inventory, etc.)
+   so the rest of app.js keeps working unchanged. */
 
-.header-right { display: flex; align-items: center; }
+(function () {
+  let open = false;
+  let busy = false;
+  let openTl = null;
+  let closeTween = null;
 
-/* toggle button in the header */
-.sm-toggle-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  padding: 0.4rem 0.8rem;
-  cursor: pointer;
-  color: var(--text2);
-  font-family: var(--font);
-  font-size: 0.82rem;
-  font-weight: 600;
-  transition: all var(--transition);
-}
-.sm-toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+  let wrapper, panel, preLayers, toggleBtn, icon, textInner;
 
-.sm-icon {
-  position: relative;
-  width: 15px;
-  height: 15px;
-  flex: 0 0 15px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.sm-icon-line {
-  position: absolute;
-  left: 50%; top: 50%;
-  width: 100%;
-  height: 2px;
-  background: currentColor;
-  border-radius: 2px;
-  transform: translate(-50%, -50%);
-}
-.sm-icon-line-v { transform: translate(-50%, -50%) rotate(90deg); }
+  function init() {
+    wrapper    = document.getElementById('staggered-menu');
+    panel      = document.getElementById('sm-panel');
+    toggleBtn  = document.getElementById('sm-toggle-btn');
+    icon       = document.getElementById('sm-icon');
+    textInner  = document.getElementById('sm-text-inner');
+    if (!wrapper || !panel || !toggleBtn) return;
 
-/* overlay wrapper: positioned fixed so the panel covers the viewport */
-.staggered-menu-wrapper {
-  position: fixed;
-  inset: 0;
-  z-index: 500;
-  pointer-events: none;
-}
-.staggered-menu-wrapper[data-open] { pointer-events: auto; }
+    preLayers = Array.from(wrapper.querySelectorAll('.sm-prelayer'));
 
-.sm-prelayers {
-  position: fixed;
-  top: 0; right: 0; bottom: 0;
-  width: clamp(280px, 40vw, 440px);
-  pointer-events: none;
-  z-index: 501;
-}
-[data-position="left"] .sm-prelayers { right: auto; left: 0; }
+    const offscreen = wrapper.dataset.position === 'left' ? -100 : 100;
+    gsap.set([panel, ...preLayers], { xPercent: offscreen });
 
-.sm-prelayer:nth-child(1) { background: linear-gradient(160deg, #2b1d13, #241a12); }
-.sm-prelayer:nth-child(2) { background: linear-gradient(160deg, var(--accent-h, #a8692c), var(--accent, #c17f3a)); }
+    document.addEventListener('mousedown', (e) => {
+      if (!open) return;
+      if (panel.contains(e.target) || toggleBtn.contains(e.target)) return;
+      window.closeStaggeredMenu();
+    });
 
-.staggered-menu-panel {
-  position: fixed;
-  top: 0; right: 0; bottom: 0;
-  width: clamp(280px, 40vw, 440px);
-  background: var(--bg2);
-  background-image: radial-gradient(circle, var(--border) 1px, transparent 1.2px);
-  background-size: 22px 22px;
-  background-position: -4px -4px;
-  border-left: 1px solid var(--border);
-  box-shadow: -20px 0 60px var(--shadow-lg);
-  display: flex;
-  flex-direction: column;
-  padding: 2.4rem 1.7rem 2rem;
-  padding-top: max(2.4rem, calc(env(safe-area-inset-top) + 1.2rem));
-  padding-right: max(1.7rem, calc(env(safe-area-inset-right) + 1rem));
-  padding-bottom: max(2rem, calc(env(safe-area-inset-bottom) + 1rem));
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  z-index: 502;
-}
-[data-position="left"] .staggered-menu-panel {
-  padding-left: max(1.7rem, calc(env(safe-area-inset-left) + 1rem));
-}
-[data-position="left"] .staggered-menu-panel { right: auto; left: 0; border-left: none; border-right: 1px solid var(--border); }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && open) window.closeStaggeredMenu();
+    });
+  }
 
-.sm-panel-inner { flex: 1; display: flex; flex-direction: column; gap: 1.5rem; }
+  function buildOpenTimeline() {
+    openTl && openTl.kill();
+    if (closeTween) { closeTween.kill(); closeTween = null; }
 
-/* brand header inside the panel */
-.sm-panel-brand {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding-bottom: 1.3rem;
-  border-bottom: 1px dashed var(--border);
-}
-.sm-panel-brand-mark {
-  width: 36px; height: 36px;
-  border-radius: 10px;
-  background: var(--accent-soft, rgba(193,127,58,0.1));
-  border: 1px solid rgba(193,127,58,0.3);
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.sm-panel-brand-name {
-  font-family: 'Fraunces', serif;
-  font-weight: 700;
-  font-size: 1.15rem;
-  color: var(--accent);
-  letter-spacing: 0.06em;
-  line-height: 1;
-}
-.sm-panel-brand-tag {
-  font-size: 0.6rem;
-  color: var(--text3);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  margin-top: 3px;
-}
+    const itemEls   = Array.from(panel.querySelectorAll('.sm-panel-itemLabel'));
+    const numberEls = Array.from(panel.querySelectorAll('.sm-panel-list[data-numbering] .sm-panel-item'));
 
-.sm-panel-list { list-style: none; display: flex; flex-direction: column; gap: 0.1rem; counter-reset: smItem; }
+    gsap.set(itemEls, { yPercent: 140, rotate: 8 });
+    gsap.set(numberEls, { '--sm-num-opacity': 0 });
 
-.sm-panel-itemWrap { position: relative; overflow: hidden; }
-.sm-panel-itemWrap + .sm-panel-itemWrap { border-top: 1px solid var(--border); }
+    const offscreen = wrapper.dataset.position === 'left' ? -100 : 100;
+    const tl = gsap.timeline({ paused: true });
 
-.sm-panel-item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  width: 100%;
-  background: none;
-  border: none;
-  text-align: left;
-  padding: 0.85rem 0.15rem;
-  font-family: 'Fraunces', serif;
-  font-size: 1.4rem;
-  font-weight: 600;
-  color: var(--text);
-  cursor: pointer;
-  letter-spacing: -0.01em;
-  transition: color 0.2s ease, gap 0.2s ease;
-}
-.sm-panel-item:hover { color: var(--accent-h); gap: 1.05rem; }
-.sm-panel-item.active { color: var(--accent); }
-.sm-panel-item svg { flex-shrink: 0; opacity: 0.75; }
+    preLayers.forEach((el, i) => {
+      tl.fromTo(el, { xPercent: offscreen }, { xPercent: 0, duration: 0.5, ease: 'power4.out' }, i * 0.07);
+    });
 
-.sm-panel-itemLabel { display: inline-block; will-change: transform; transform-origin: 50% 100%; }
+    const lastTime = preLayers.length ? (preLayers.length - 1) * 0.07 : 0;
+    const panelInsertTime = lastTime + (preLayers.length ? 0.08 : 0);
+    const panelDuration = 0.6;
 
-.sm-panel-list[data-numbering] .sm-panel-item::after {
-  counter-increment: smItem;
-  content: counter(smItem, decimal-leading-zero);
-  margin-left: auto;
-  font-family: var(--font);
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--accent);
-  opacity: var(--sm-num-opacity, 0);
-}
+    tl.fromTo(panel, { xPercent: offscreen }, { xPercent: 0, duration: panelDuration, ease: 'power4.out' }, panelInsertTime);
 
-/* ── ACCOUNT CARD — styled like a coffee bag / ticket label ── */
-.sm-account { margin-top: auto; padding-top: 1.5rem; }
+    if (itemEls.length) {
+      const itemsStart = panelInsertTime + panelDuration * 0.2;
+      tl.to(itemEls, {
+        yPercent: 0, rotate: 0, duration: 0.9, ease: 'power4.out',
+        stagger: { each: 0.09, from: 'start' }
+      }, itemsStart);
 
-.sm-account-card {
-  position: relative;
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 1.1rem 1.1rem 0.9rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
-  overflow: hidden;
-}
-.sm-account-scallop {
-  position: absolute;
-  top: -1px; left: 12px; right: 12px; height: 8px;
-  background-image: radial-gradient(circle, var(--bg2) 2.6px, transparent 2.8px);
-  background-size: 14px 14px;
-  background-position: 0 -2px;
-}
+      if (numberEls.length) {
+        tl.to(numberEls, {
+          duration: 0.5, ease: 'power2.out', '--sm-num-opacity': 1,
+          stagger: { each: 0.07, from: 'start' }
+        }, itemsStart + 0.1);
+      }
+    }
 
-.sm-icon-row { display: flex; gap: 0.55rem; }
-.sm-icon-btn-wrap { flex: 1; position: relative; }
-.sm-icon-btn {
-  width: 100%;
-  display: flex; align-items: center; justify-content: center; gap: 0.4rem;
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  padding: 0.5rem 0.5rem;
-  font-family: var(--font);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text2);
-  cursor: pointer;
-  transition: all var(--transition);
-  position: relative;
-}
-.sm-icon-btn:hover { border-color: var(--accent); color: var(--accent-h); }
+    openTl = tl;
+    return tl;
+  }
 
-.sm-account .notif-panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  left: 0;
-  width: auto;
-}
+  function playOpen() {
+    if (busy) return;
+    busy = true;
+    const tl = buildOpenTimeline();
+    tl.eventCallback('onComplete', () => { busy = false; });
+    tl.play(0);
+  }
 
-.sm-profile-row {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  width: 100%;
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 0.55rem 0.7rem;
-  cursor: pointer;
-  transition: all var(--transition);
-  text-align: left;
-}
-.sm-profile-row:hover { border-color: var(--accent); }
-.sm-profile-row .user-info { flex: 1; min-width: 0; }
-.sm-profile-row .uname,
-.sm-profile-row .ushop { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sm-profile-chevron { color: var(--text3); flex-shrink: 0; }
+  function playClose() {
+    openTl && openTl.kill();
+    openTl = null;
 
-.sm-logout-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  width: 100%;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  padding: 0.55rem;
-  font-family: var(--font);
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text2);
-  cursor: pointer;
-  transition: all var(--transition);
-}
-.sm-logout-btn:hover { border-color: #c62828; color: #c62828; background: rgba(198,40,40,0.06); }
+    const offscreen = wrapper.dataset.position === 'left' ? -100 : 100;
+    const all = [...preLayers, panel];
+    closeTween && closeTween.kill();
+    closeTween = gsap.to(all, {
+      xPercent: offscreen, duration: 0.3, ease: 'power3.in', overwrite: 'auto',
+      onComplete: () => {
+        const itemEls = Array.from(panel.querySelectorAll('.sm-panel-itemLabel'));
+        gsap.set(itemEls, { yPercent: 140, rotate: 8 });
+        const numberEls = Array.from(panel.querySelectorAll('.sm-panel-list[data-numbering] .sm-panel-item'));
+        gsap.set(numberEls, { '--sm-num-opacity': 0 });
+        busy = false;
+      }
+    });
+  }
 
-@media (max-width: 640px) {
-  .staggered-menu-panel, .sm-prelayers { width: 100%; }
-  .sm-toggle-label { display: none; }
-  .sm-toggle-btn { min-height: 40px; min-width: 40px; padding: 0.4rem; justify-content: center; }
-  .sm-icon-btn, .sm-profile-row, .sm-logout-btn { min-height: 44px; }
-}
+  function animateIcon(opening) {
+    gsap.killTweensOf(icon);
+    gsap.to(icon, {
+      rotate: opening ? 225 : 0,
+      duration: opening ? 0.7 : 0.32,
+      ease: opening ? 'power4.out' : 'power3.inOut',
+      overwrite: 'auto'
+    });
+  }
 
-@media (prefers-reduced-motion: reduce) {
-  .sm-panel-itemLabel, .sm-panel-item, .sm-prelayer, .staggered-menu-panel { transition: none !important; }
-}
+  window.toggleStaggeredMenu = function () {
+    open = !open;
+    wrapper.toggleAttribute('data-open', open);
+    panel.setAttribute('aria-hidden', String(!open));
+    toggleBtn.setAttribute('aria-expanded', String(open));
+    if (textInner) textInner.textContent = open ? 'Close' : 'Menu';
+    animateIcon(open);
+    if (open) playOpen(); else playClose();
+  };
+
+  window.closeStaggeredMenu = function () {
+    if (!open) return;
+    open = false;
+    wrapper.removeAttribute('data-open');
+    panel.setAttribute('aria-hidden', 'true');
+    toggleBtn.setAttribute('aria-expanded', 'false');
+    if (textInner) textInner.textContent = 'Menu';
+    animateIcon(false);
+    playClose();
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
