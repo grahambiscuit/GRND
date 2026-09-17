@@ -1,5 +1,12 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+html, body { overflow-x: hidden; width: 100%; }
+
+/* Any element that draws a focus ring or is tappable gets a proper touch target
+   and no 300ms tap delay / grey flash on iOS + Android */
+button, .nav-tab, .theme-toggle, .notif-btn, .sm-toggle-btn, .btn-edit, .btn-del,
+.btn-move, .notif-action-btn, .act-item, a { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+
 :root {
   --font: 'DM Sans', sans-serif;
   --radius: 10px;
@@ -45,10 +52,13 @@ body {
 /* ── AUTH ──────────────────────────────────────────────── */
 #auth-wrapper {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem;
+  padding-top: max(2rem, env(safe-area-inset-top));
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
   background: var(--bg);
   position: relative;
   overflow: hidden;
@@ -151,6 +161,11 @@ body {
   transition: border-color var(--transition), background 0.3s;
 }
 
+@media (max-width: 768px) {
+  /* iOS Safari zooms the whole page in on focus if a field's font-size is under 16px */
+  .form-group input, .form-group select, .form-group textarea { font-size: 16px; }
+}
+
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(193,127,58,0.08); }
@@ -237,13 +252,17 @@ body {
 .err-box.show { display: block; }
 
 /* ── APP ───────────────────────────────────────────────── */
-#app-wrapper { display: none; min-height: 100vh; background: var(--bg); }
+#app-wrapper { display: none; min-height: 100vh; min-height: 100dvh; background: var(--bg); }
 
 .app-header {
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
   padding: 0 1.8rem;
+  padding-top: env(safe-area-inset-top);
+  padding-left: max(1.8rem, env(safe-area-inset-left));
+  padding-right: max(1.8rem, env(safe-area-inset-right));
   height: 60px;
+  height: calc(60px + env(safe-area-inset-top));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -595,6 +614,11 @@ body {
   border-radius: var(--radius);
   overflow: hidden;
   box-shadow: 0 2px 8px var(--shadow);
+}
+
+@media (max-width: 768px) {
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-wrap table { min-width: 560px; }
 }
 
 table { width: 100%; border-collapse: collapse; }
@@ -1102,18 +1126,22 @@ tbody td.role-check, tbody td.role-cross { text-align: center; }
 
 @media (max-width: 768px) {
   .user-info { display: none; }
-  .app-main { padding: 1.2rem; }
+  .app-main { padding: 1.2rem; padding-bottom: max(1.2rem, env(safe-area-inset-bottom)); }
+  .theme-toggle, .notif-btn, .sm-toggle-btn, .btn-edit, .btn-del, .btn-move,
+  .notif-action-btn, .alert-dismiss, .notif-close, .modal-close {
+    min-height: 40px; min-width: 40px;
+  }
+  .modal { padding: 1.4rem; border-radius: 14px; }
+  .modal-backdrop { padding: 1rem; padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
 }
 
 @media (max-width: 640px) {
   .form-row { grid-template-columns: 1fr; }
   .auth-card { padding: 2rem 1.5rem; }
   .stats-row { grid-template-columns: 1fr 1fr; }
-  thead th:nth-child(4), tbody td:nth-child(4) { display: none; }
-  thead th:nth-child(5), tbody td:nth-child(5) { display: none; }
   .report-summary-row { grid-template-columns: 1fr 1fr; }
   .profile-info-grid { grid-template-columns: 1fr; }
-  .notif-panel { width: 280px; right: -60px; }
+  .notif-panel { width: min(310px, calc(100vw - 2rem)); right: -0.5rem; }
 }
 
 /* ── FIREBASE LOADING ──────────────────────────────────── */
